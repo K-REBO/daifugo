@@ -66,7 +66,8 @@ function createEnvironment() {
   
   env.define('get', (obj, key) => {
     if (typeof obj === 'object' && obj !== null) {
-      return obj[key];
+      const keyName = key instanceof Symbol ? key.name : key;
+      return obj[keyName];
     }
     return null;
   });
@@ -82,6 +83,11 @@ function evaluate(expr, env) {
   
   // Strings are self-evaluating
   if (typeof expr === 'string') {
+    return expr;
+  }
+  
+  // Objects are self-evaluating (for game state data)
+  if (typeof expr === 'object' && expr !== null && !Array.isArray(expr) && !(expr instanceof Symbol)) {
     return expr;
   }
   
@@ -140,6 +146,13 @@ function evaluate(expr, env) {
       const funcName = name instanceof Symbol ? name.name : name;
       env.define(funcName, func);
       return func;
+    }
+    
+    if ((first instanceof Symbol && first.name === 'defrule') || first === 'defrule') {
+      const [, name, description, ruleFunction] = expr;
+      const evaluatedRuleFunction = evaluate(ruleFunction, env);
+      const defruleFunc = env.lookup('defrule');
+      return defruleFunc(name, description, evaluatedRuleFunction);
     }
     
     // Function application
