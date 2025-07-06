@@ -1,0 +1,137 @@
+/* Responsive layout fixes for mobile and desktop */
+
+/* Mobile specific adjustments */
+@media (max-width: 768px) {
+  #game-container {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    padding: 0.5rem;
+  }
+
+  #players-area {
+    max-height: 25vh !important;
+    min-height: 100px !important;
+  }
+
+  /* Compact mobile layout */
+  .cpu-player-top {
+    min-width: 80px !important;
+    padding: 0.5rem !important;
+    font-size: 0.75rem;
+  }
+
+  .cpu-player-top .player-name {
+    font-size: 0.75rem !important;
+  }
+
+  /* Mobile field area */
+  #field-area {
+    margin-bottom: 1rem;
+  }
+
+  /* Mobile human player area */
+  #human-player {
+    padding-bottom: 1rem;
+  }
+
+  #human-cards .card {
+    transform: scale(0.9);
+  }
+
+  /* Mobile buttons */
+  .button-primary, .button-secondary {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  #players-area {
+    max-height: 28vh !important;
+    min-height: 110px !important;
+  }
+
+  .cpu-player-top {
+    min-width: 100px !important;
+  }
+}
+
+/* Desktop adjustments */
+@media (min-width: 1025px) {
+  #players-area {
+    max-height: 30vh !important;
+    min-height: 120px !important;
+  }
+
+  .cpu-player-top {
+    min-width: 120px !important;
+    padding: 0.75rem !important;
+  }
+}
+
+/* Landscape mobile specific */
+@media (max-width: 768px) and (orientation: landscape) {
+  #game-container {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  #players-area {
+    max-height: 35vh !important;
+    min-height: 80px !important;
+  }
+
+  /* More compact in landscape */
+  .cpu-player-top {
+    min-width: 70px !important;
+    padding: 0.25rem !important;
+  }
+
+  .cpu-player-top .player-name {
+    font-size: 0.7rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  #field-area {
+    margin-bottom: 0.5rem;
+  }
+
+  #human-player {
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* Ensure no layout shift */
+#game-container {
+  overflow: hidden;
+}
+
+#players-area {
+  transition: none; /* Disable transitions to prevent shifts */
+}
+
+/* Fixed bottom elements */
+#field-area, #human-player {
+  position: relative;
+  z-index: 1;
+}
+
+/* Scrolling for many players */
+#players-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+#players-area::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+#players-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+#players-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

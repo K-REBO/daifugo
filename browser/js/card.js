@@ -94,7 +94,14 @@ class Card {
     const cardEl = document.createElement('div');
     cardEl.className = `card ${this.getColor() === 'red' ? 'card-red' : 
                               this.getColor() === 'black' ? 'card-black' : 'card-joker'}`;
-    cardEl.textContent = this.getDisplayText();
+    
+    // Make joker 4x larger
+    if (this.isJoker) {
+      cardEl.innerHTML = `<span style="font-size: 4em; line-height: 1;">🃏</span>`;
+    } else {
+      cardEl.textContent = this.getDisplayText();
+    }
+    
     cardEl.dataset.suit = this.suit;
     cardEl.dataset.rank = this.rank;
     

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルデバッグテスト</title>
+    <style>
+        body {
+            background: #1f2937;
+            color: white;
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        .debug-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #7c3aed;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        .debug-button:hover {
+            background: #6d28d9;
+        }
+        .log {
+            margin-top: 20px;
+            background: #374151;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .log-line {
+            margin: 5px 0;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>🔍 シンプルデバッグテスト</h1>
+    <p>ページの右上にデバッグボタンが表示されるかテストします。</p>
+    
+    <button onclick="manualTest()">手動でデバッグボタンを作成</button>
+    
+    <div class="log" id="log">
+        <div class="log-line">ログがここに表示されます...</div>
+    </div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = document.createElement('div');
+            logLine.className = `log-line ${type}`;
+            logLine.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(logLine);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function createDebugButton() {
+            log('デバッグボタンを作成中...', 'info');
+            
+            // Check if button already exists
+            const existing = document.getElementById('debug-button');
+            if (existing) {
+                log('既存のデバッグボタンを削除', 'info');
+                existing.remove();
+            }
+            
+            const button = document.createElement('button');
+            button.id = 'debug-button';
+            button.className = 'debug-button';
+            button.textContent = '🔍 Debug';
+            button.onclick = () => {
+                log('デバッグボタンがクリックされました！', 'success');
+                alert('デバッグボタンが正常に動作しています！');
+            };
+            
+            document.body.appendChild(button);
+            log('デバッグボタンを作成しました', 'success');
+            
+            // Verify
+            const verification = document.getElementById('debug-button');
+            if (verification) {
+                log('✅ デバッグボタンの存在を確認', 'success');
+                const rect = verification.getBoundingClientRect();
+                log(`ボタン位置: top=${rect.top}px, right=${window.innerWidth - rect.right}px`, 'info');
+            } else {
+                log('❌ デバッグボタンが見つかりません', 'error');
+            }
+        }
+        
+        function manualTest() {
+            log('手動テスト開始', 'info');
+            createDebugButton();
+        }
+        
+        // Auto-create button on load
+        window.addEventListener('load', () => {
+            log('ページ読み込み完了', 'info');
+            setTimeout(() => {
+                createDebugButton();
+            }, 100);
+        });
+        
+        log('スクリプト読み込み完了', 'info');
+    </script>
+</body>
+</html>

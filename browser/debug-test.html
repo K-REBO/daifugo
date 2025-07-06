@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>デバッグ機能テスト</title>
+    <link href="./css/output.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold text-center mb-8">🔍 デバッグ機能テスト</h1>
+        
+        <div class="text-center mb-8">
+            <p class="text-gray-300 mb-4">右上にデバッグボタンが表示されるはずです</p>
+            <button onclick="testDebugSystem()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg">
+                デバッグシステムをテスト
+            </button>
+        </div>
+        
+        <div id="debug-info" class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">デバッグ情報</h2>
+            <div id="debug-log" class="space-y-2 text-sm font-mono"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import debug system
+        import { GameDebugSystem } from './js/debug-system.js';
+        
+        let debugSystem = null;
+        const logElement = document.getElementById('debug-log');
+        
+        function log(message) {
+            console.log(message);
+            const logLine = document.createElement('div');
+            logLine.className = 'text-green-400';
+            logLine.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(logLine);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function error(message) {
+            console.error(message);
+            const logLine = document.createElement('div');
+            logLine.className = 'text-red-400';
+            logLine.textContent = `[${new Date().toLocaleTimeString()}] ERROR: ${message}`;
+            logElement.appendChild(logLine);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Initialize debug system
+        try {
+            log('デバッグシステム初期化中...');
+            debugSystem = new GameDebugSystem();
+            log('✅ デバッグシステム初期化完了');
+            
+            // Check if debug button exists
+            setTimeout(() => {
+                const debugButton = document.getElementById('debug-button');
+                if (debugButton) {
+                    log('✅ デバッグボタンが見つかりました');
+                    log(`ボタン位置: ${debugButton.getBoundingClientRect().right}px right, ${debugButton.getBoundingClientRect().top}px top`);
+                } else {
+                    error('❌ デバッグボタンが見つかりません');
+                }
+            }, 100);
+            
+        } catch (err) {
+            error(`デバッグシステム初期化エラー: ${err.message}`);
+        }
+        
+        // Make test function global
+        window.testDebugSystem = function() {
+            if (debugSystem) {
+                log('デバッグシステムテスト開始...');
+                debugSystem.startRecording();
+                
+                // Record some test data
+                debugSystem.recordPlayerAction('TestPlayer', 'test_action', {
+                    testData: 'これはテストデータです',
+                    timestamp: new Date().toISOString()
+                });
+                
+                debugSystem.recordRuleEvent('TestRule', 'test_trigger', {
+                    reason: 'テスト用ルールトリガー'
+                });
+                
+                log('✅ テストデータ記録完了');
+                log('右上のDebugボタンをクリックして詳細を確認してください');
+            } else {
+                error('デバッグシステムが初期化されていません');
+            }
+        };
+        
+        log('✅ テストページ読み込み完了');
+    </script>
+</body>
+</html>

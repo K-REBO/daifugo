@@ -1,22 +1,82 @@
 // Main entry point for the Daifugo browser game
-// PWA + Module loading
+// Complete game system with PWA
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🎴 大富豪 - Lisp Rule Engine');
-    console.log('🚀 Application starting...');
+    console.log('🚀 Complete game system starting...');
     
     // Initialize PWA
     await initializePWA();
     
-    // Initialize game status
-    const gameStatus = document.getElementById('game-status');
-    gameStatus.textContent = 'PWA + カードシステム実装完了 ✅';
+    // Load game modules
+    await loadGameModules();
     
-    // Demo card functionality
+    // Initialize game controller with a small delay to ensure modules are ready
     setTimeout(() => {
-        demoCardSystem();
-    }, 1000);
+        initializeGameController();
+    }, 100);
+    
+    // Update status
+    const gameStatus = document.getElementById('game-status');
+    gameStatus.textContent = '🎮 ゲームシステム準備完了 - ゲーム開始ボタンをクリック！';
 });
+
+/**
+ * Load all game modules
+ */
+async function loadGameModules() {
+    console.log('📦 Loading game modules...');
+    
+    try {
+        // Load modules in dependency order
+        await import('./card.js');
+        await import('./player.js');
+        await import('./game.js');
+        await import('./cpu-ai.js');
+        await import('./debug-system.js');
+        await import('./game-controller.js');
+        await import('./rule-settings.js');
+        
+        console.log('✅ All game modules loaded');
+    } catch (error) {
+        console.error('❌ Failed to load game modules:', error);
+    }
+}
+
+/**
+ * Initialize game controller
+ */
+function initializeGameController() {
+    console.log('🎮 Initializing game controller...');
+    
+    // Initialize debug system first
+    if (window.GameDebugSystemModule && window.GameDebugSystemModule.GameDebugSystem) {
+        window.debugSystem = new window.GameDebugSystemModule.GameDebugSystem();
+        console.log('✅ Debug system initialized');
+    } else {
+        console.error('❌ GameDebugSystemModule not found');
+    }
+    
+    // Create global rule settings first
+    if (window.RuleSettingsModule && window.RuleSettingsModule.RuleSettings) {
+        window.ruleSettings = new window.RuleSettingsModule.RuleSettings();
+        console.log('✅ Rule settings initialized');
+    } else {
+        console.error('❌ RuleSettingsModule not found');
+        return;
+    }
+    
+    // Then create game controller (which depends on rule settings)
+    if (window.GameControllerModule && window.GameControllerModule.GameController) {
+        window.gameController = new window.GameControllerModule.GameController();
+        console.log('✅ Game controller initialized');
+    } else {
+        console.error('❌ GameControllerModule not found');
+        return;
+    }
+    
+    console.log('✅ Game controller and rule settings ready');
+}
 
 /**
  * Initialize Progressive Web App features
@@ -117,44 +177,3 @@ function showUpdateNotification() {
     }, 10000);
 }
 
-/**
- * Demo card system functionality
- */
-function demoCardSystem() {
-    console.log('🃏 Demonstrating card system...');
-    
-    // Load card module dynamically
-    import('./card.js').then(({ Card, CardUtils }) => {
-        const gameStatus = document.getElementById('game-status');
-        const humanCards = document.getElementById('human-cards');
-        
-        // Create some demo cards
-        const demoCards = [
-            new Card('♠', 'A'),
-            new Card('♥', 'K'), 
-            new Card('♦', '10'),
-            new Card('♣', '7'),
-            new Card('JOKER', 'JOKER')
-        ];
-        
-        // Render demo cards
-        humanCards.innerHTML = '';
-        demoCards.forEach(card => {
-            const cardElement = card.createElement();
-            cardElement.classList.add('animate-card-deal');
-            humanCards.appendChild(cardElement);
-        });
-        
-        // Update status
-        gameStatus.textContent = 'デモカード表示中 - クリックして選択可能';
-        
-        // Update card count
-        document.getElementById('human-card-count').textContent = `手札: ${demoCards.length}枚`;
-        
-        setTimeout(() => {
-            gameStatus.textContent = '次のフェーズ: プレイヤー管理システム';
-        }, 3000);
-    }).catch(error => {
-        console.error('Failed to load card module:', error);
-    });
-}

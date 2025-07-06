@@ -22,21 +22,25 @@
     
     <!-- CSS -->
     <link href="./css/output.css" rel="stylesheet">
+    <link href="./css/responsive.css" rel="stylesheet">
 </head>
 <body class="game-table">
-    <div class="container mx-auto p-4">
-        <header class="text-center mb-6">
-            <h1 class="text-4xl font-bold text-white mb-2">大富豪</h1>
-            <p class="text-white/80">Powered by Lisp Rule Engine</p>
+    <div class="container mx-auto">
+        <header class="text-center py-4 flex-shrink-0">
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">大富豪</h1>
+            <p class="text-white/80 text-sm md:text-base">Powered by Lisp Rule Engine</p>
         </header>
         
         <!-- Game Area -->
-        <div id="game-container" class="max-w-6xl mx-auto">
-            <!-- Players will be rendered here -->
-            <div id="players-area" class="mb-8"></div>
+        <div id="game-container" class="max-w-6xl mx-auto flex flex-col" style="height: calc(100vh - 140px);">
+            <!-- CPU Players at top (flexible height) -->
+            <div id="players-area" class="flex-shrink-0 overflow-y-auto" style="max-height: 30vh; min-height: 120px;"></div>
             
-            <!-- Field (center) -->
-            <div id="field-area" class="player-area text-center mb-8">
+            <!-- Spacer to push center and bottom down -->
+            <div class="flex-grow"></div>
+            
+            <!-- Field (center) - fixed position from bottom -->
+            <div id="field-area" class="player-area text-center mb-4 flex-shrink-0">
                 <h3 class="text-white font-semibold mb-4">場</h3>
                 <div id="field-cards" class="flex justify-center space-x-2 min-h-24">
                     <!-- Field cards will be rendered here -->
@@ -46,8 +50,8 @@
                 </div>
             </div>
             
-            <!-- Human Player Area -->
-            <div id="human-player" class="player-area">
+            <!-- Human Player Area - anchored to bottom -->
+            <div id="human-player" class="player-area flex-shrink-0 pb-4">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-white font-semibold">あなた</h3>
                     <span id="human-card-count" class="text-white/80">手札: 0枚</span>
@@ -65,7 +69,7 @@
         <!-- Settings Panel -->
         <div id="settings-panel" class="fixed top-4 right-4">
             <button id="settings-button" class="button-secondary">
-                ⚙️ 設定
+                ⚙️ ルール設定
             </button>
         </div>
     </div>
