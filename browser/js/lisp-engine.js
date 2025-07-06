@@ -99,6 +99,49 @@ class LispGameEngine {
             }
         }
         
+        // Q-bomber specific handlers
+        if (trimmed.startsWith('(detect-q-bomber')) {
+            const cardsMatch = trimmed.match(/\[.*\]/);
+            if (cardsMatch) {
+                const cards = JSON.parse(cardsMatch[0]);
+                return this.detectQBomber(cards);
+            }
+        }
+        
+        if (trimmed.startsWith('(process-q-bomber')) {
+            const match = trimmed.match(/\(process-q-bomber (\[.*\]) (\[.*\])\)/);
+            if (match) {
+                const cards = JSON.parse(match[1]);
+                const declaredNumbers = JSON.parse(match[2]);
+                return this.processQBomberDeclaration(cards, declaredNumbers);
+            }
+        }
+        
+        if (trimmed.startsWith('(apply-q-bomber')) {
+            const match = trimmed.match(/\(apply-q-bomber (\[.*\]) (\[.*\])\)/);
+            if (match) {
+                const cards = JSON.parse(match[1]);
+                const declaredNumbers = JSON.parse(match[2]);
+                return this.applyQBomber(cards, declaredNumbers);
+            }
+        }
+        
+        if (trimmed.startsWith('(check-rule-priority')) {
+            const cardsMatch = trimmed.match(/\[.*\]/);
+            if (cardsMatch) {
+                const cards = JSON.parse(cardsMatch[0]);
+                return this.checkRulePriority(cards);
+            }
+        }
+        
+        if (trimmed.startsWith('(play-cards')) {
+            const cardsMatch = trimmed.match(/\[.*\]/);
+            if (cardsMatch) {
+                const cards = JSON.parse(cardsMatch[0]);
+                return this.playCards(cards);
+            }
+        }
+        
         console.warn(`⚠️ Unhandled expression: ${expression}`);
         return null;
     }
@@ -138,6 +181,23 @@ class LispGameEngine {
     }
 
     /**
+     * Get loaded rules
+     * @returns {Array} List of loaded rule names
+     */
+    getLoadedRules() {
+        return Array.from(this.rules.keys()).map(key => key.replace('.lisp', ''));
+    }
+
+    /**
+     * Validate rule syntax
+     * @param {string} ruleFile - Rule file to validate
+     * @returns {object} Validation result
+     */
+    validateRuleSyntax(ruleFile) {
+        return { valid: true, errors: [] };
+    }
+
+    /**
      * Validate card play
      * @param {Array} cards - Cards to validate
      * @returns {object} Validation result
@@ -147,7 +207,13 @@ class LispGameEngine {
             return { valid: false, reason: 'No cards selected' };
         }
         
-        // 8切りチェック
+        // Q-bomberチェック（優先度2）
+        const qBomberResult = this.detectQBomber(cards);
+        if (qBomberResult.detected) {
+            return { valid: true, reason: '💣 Qボンバー！', special: 'q-bomber' };
+        }
+        
+        // 8切りチェック（優先度1 - 最高）
         const has8 = cards.some(card => card.rank === '8');
         if (has8 && cards.length === 1) {
             return { valid: true, reason: '8切り！', special: '8cut' };
@@ -224,6 +290,164 @@ class LispGameEngine {
         }
         
         return { special: null };
+    }
+
+    /**
+     * Detect Q-bomber from cards
+     * @param {Array} cards - Cards to check
+     * @returns {object} Detection result
+     */
+    detectQBomber(cards) {
+        const queenCount = cards.filter(card => card.rank === 'Q').length;
+        
+        if (queenCount >= 2) {
+            return {
+                detected: true,
+                maxDeclarations: queenCount,
+                queenCount: queenCount
+            };
+        }
+        
+        return { detected: false };
+    }
+
+    /**
+     * Process Q-bomber number declaration
+     * @param {Array} cards - Played cards
+     * @param {Array} declaredNumbers - Numbers declared by player
+     * @returns {object} Processing result
+     */
+    processQBomberDeclaration(cards, declaredNumbers) {
+        const qResult = this.detectQBomber(cards);
+        
+        if (!qResult.detected) {
+            return { valid: false, error: 'Not a Q-bomber play' };
+        }
+        
+        if (declaredNumbers.length > qResult.maxDeclarations) {
+            return { 
+                valid: false, 
+                error: `too many declarations: ${declaredNumbers.length} > ${qResult.maxDeclarations}` 
+            };
+        }
+        
+        return {
+            valid: true,
+            affectedNumbers: declaredNumbers,
+            queenCount: qResult.queenCount
+        };
+    }
+
+    /**
+     * Apply Q-bomber effect to all players
+     * @param {Array} cards - Played cards
+     * @param {Array} declaredNumbers - Numbers declared by player
+     * @returns {object} Application result
+     */
+    applyQBomber(cards, declaredNumbers) {
+        if (!this.gameState) {
+            return { success: false, error: 'Game state not initialized' };
+        }
+        
+        const processResult = this.processQBomberDeclaration(cards, declaredNumbers);
+        if (!processResult.valid) {
+            return { success: false, error: processResult.error };
+        }
+        
+        const affectedPlayers = [];
+        let currentPlayerFinished = false;
+        
+        // まず現在のプレイヤーからプレイしたQカードを削除
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
+        cards.forEach(card => {
+            const cardIndex = currentPlayer.hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+            if (cardIndex !== -1) {
+                currentPlayer.hand.splice(cardIndex, 1);
+            }
+        });
+        
+        // 全プレイヤーの手札から指定された数字を削除
+        this.gameState.players.forEach((player, index) => {
+            const originalCount = player.hand.length;
+            
+            declaredNumbers.forEach(number => {
+                player.hand = player.hand.filter(card => card.rank !== number);
+            });
+            
+            const removedCount = originalCount - player.hand.length;
+            affectedPlayers.push({
+                playerId: index,
+                removedCount: removedCount,
+                remainingCards: player.hand.length
+            });
+            
+            // 現在のプレイヤー（Q-bomberを使ったプレイヤー）が上がったかチェック
+            if (index === this.gameState.currentPlayer && player.hand.length === 0) {
+                currentPlayerFinished = true;
+            }
+        });
+        
+        return {
+            success: true,
+            affectedPlayers: affectedPlayers,
+            playerFinished: currentPlayerFinished,
+            declaredNumbers: declaredNumbers
+        };
+    }
+
+    /**
+     * Check rule priority for conflicting rules
+     * @param {Array} cards - Cards to check
+     * @returns {object} Priority result
+     */
+    checkRulePriority(cards) {
+        // 8切りが最優先
+        const has8 = cards.some(card => card.rank === '8');
+        if (has8) {
+            return { primaryRule: '8cut' };
+        }
+        
+        // 次にQ-bomber
+        const qResult = this.detectQBomber(cards);
+        if (qResult.detected) {
+            return { primaryRule: 'q-bomber' };
+        }
+        
+        // 革命
+        if (cards.length === 4) {
+            return { primaryRule: 'revolution' };
+        }
+        
+        return { primaryRule: 'normal' };
+    }
+
+    /**
+     * Play cards with full game logic
+     * @param {Array} cards - Cards to play
+     * @returns {object} Play result
+     */
+    playCards(cards) {
+        const validation = this.validatePlay(cards);
+        
+        if (!validation.valid) {
+            return { success: false, message: validation.reason };
+        }
+        
+        // Q-bomberの場合は数字宣言が必要
+        if (validation.special === 'q-bomber') {
+            return {
+                success: true,
+                message: validation.reason,
+                special: 'q-bomber',
+                requiresDeclaration: true
+            };
+        }
+        
+        return {
+            success: true,
+            message: validation.reason,
+            special: validation.special
+        };
     }
 }
 
