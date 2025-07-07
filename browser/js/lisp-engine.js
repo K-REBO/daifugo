@@ -154,6 +154,36 @@ class LispGameEngine {
             return this.getEngineCapabilities();
         }
         
+        // Card strength comparison
+        if (trimmed.startsWith('(compare-card-strength')) {
+            const match = trimmed.match(/\(compare-card-strength (\{.*?\}) (\{.*?\})(?: (true|false))?\)/);
+            if (match) {
+                const card1 = JSON.parse(match[1]);
+                const card2 = JSON.parse(match[2]);
+                const revolution = match[3] === 'true';
+                return this.compareCardStrength(card1, card2, revolution);
+            }
+        }
+        
+        // Can play on field validation
+        if (trimmed.startsWith('(can-play-on-field')) {
+            const match = trimmed.match(/\(can-play-on-field (\[.*?\]) (\[.*?\])\)/);
+            if (match) {
+                const newCards = JSON.parse(match[1]);
+                const fieldCards = JSON.parse(match[2]);
+                return this.canPlayOnField(newCards, fieldCards);
+            }
+        }
+        
+        // Get card rank value
+        if (trimmed.startsWith('(get-card-rank-value')) {
+            const match = trimmed.match(/\(get-card-rank-value (\{.*?\})\)/);
+            if (match) {
+                const card = JSON.parse(match[1]);
+                return this.getCardRankValue(card);
+            }
+        }
+        
         // ゲーム状態初期化
         if (trimmed.startsWith('(init-game-state')) {
             const playerCount = parseInt(trimmed.match(/\d+/)[0]);
@@ -1005,8 +1035,104 @@ class LispGameEngine {
             'ai-decisions',
             'ui-integration',
             'event-generation',
-            'state-management'
+            'state-management',
+            'card-strength-comparison',
+            'field-validation'
         ];
+    }
+    
+    /**
+     * Get numeric value for card rank (Daifugo hierarchy)
+     * @param {object} card - Card object
+     * @param {boolean} revolution - Whether revolution mode is active
+     * @returns {number} Numeric value for comparison
+     */
+    getCardRankValue(card, revolution = false) {
+        if (card.suit === 'JOKER' || card.rank === 'JOKER') {
+            return 15; // Joker is always strongest
+        }
+        
+        // Daifugo hierarchy: 3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A < 2
+        const rankValues = {
+            '3': 1,  '4': 2,  '5': 3,  '6': 4,  '7': 5,  '8': 6,
+            '9': 7,  '10': 8, 'J': 9,  'Q': 10, 'K': 11, 'A': 12, '2': 13
+        };
+        
+        const baseValue = rankValues[card.rank] || 0;
+        
+        if (revolution && baseValue < 15) {
+            // In revolution, reverse order except for Joker
+            return 14 - baseValue;
+        }
+        
+        return baseValue;
+    }
+    
+    /**
+     * Compare strength of two cards
+     * @param {object} card1 - First card
+     * @param {object} card2 - Second card
+     * @param {boolean} revolution - Whether revolution mode is active
+     * @returns {number} -1 if card1 < card2, 0 if equal, 1 if card1 > card2
+     */
+    compareCardStrength(card1, card2, revolution = false) {
+        const value1 = this.getCardRankValue(card1, revolution);
+        const value2 = this.getCardRankValue(card2, revolution);
+        
+        if (value1 < value2) return -1;
+        if (value1 > value2) return 1;
+        return 0;
+    }
+    
+    /**
+     * Check if cards can be played on current field
+     * @param {Array} newCards - Cards to be played
+     * @param {Array} fieldCards - Current cards on field
+     * @returns {object} Validation result
+     */
+    canPlayOnField(newCards, fieldCards) {
+        // Empty field accepts any cards
+        if (!fieldCards || fieldCards.length === 0) {
+            return { canPlay: true, reason: 'Empty field accepts any cards' };
+        }
+        
+        // Must play same number of cards
+        if (newCards.length !== fieldCards.length) {
+            return { 
+                canPlay: false, 
+                reason: `Must play ${fieldCards.length} cards, not ${newCards.length}` 
+            };
+        }
+        
+        // Check if all new cards are same rank
+        if (newCards.length > 1) {
+            const firstRank = newCards[0].rank;
+            if (!newCards.every(card => card.rank === firstRank)) {
+                return { 
+                    canPlay: false, 
+                    reason: 'All cards must be same rank' 
+                };
+            }
+        }
+        
+        // Get revolution status from game state
+        const revolution = this.gameState ? this.gameState.isRevolution : false;
+        
+        // Compare card strength (use first card of each set)
+        const newCardValue = this.getCardRankValue(newCards[0], revolution);
+        const fieldCardValue = this.getCardRankValue(fieldCards[0], revolution);
+        
+        if (newCardValue >= fieldCardValue) {
+            return { 
+                canPlay: true, 
+                reason: `Cards are stronger or equal to field cards (${newCardValue} >= ${fieldCardValue})` 
+            };
+        } else {
+            return { 
+                canPlay: false, 
+                reason: `Cards are weaker than field cards (${newCardValue} < ${fieldCardValue})` 
+            };
+        }
     }
 }
 

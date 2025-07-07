@@ -269,8 +269,15 @@ class LispGameController {
       this.humanPlayerId = 0;
       
       // Update UI
+      console.log('🎯 Updating UI after game start...');
       this.updateFullUI();
       this.enableGameControls();
+      
+      // Force CPU display update
+      console.log('🤖 Forcing CPU display update...');
+      setTimeout(() => {
+        this.updatePlayersDisplay();
+      }, 500);
       
       // Load local rules
       this.loadLocalRules();
@@ -364,7 +371,8 @@ class LispGameController {
       if (playResult.success) {
         this.showMessage('カードを出しました');
         
-        // Remove cards from player hand
+        // Add cards to field and remove from player hand
+        this.addCardsToField(this.selectedCards);
         this.selectedCards.forEach(card => {
           this.lispEngine.eval(`(remove-card-from-player ${this.humanPlayerId} ${JSON.stringify(card)})`);
         });
@@ -392,6 +400,23 @@ class LispGameController {
     } catch (error) {
       console.error('Play cards error:', error);
       this.showMessage('カードを出すことができませんでした');
+    }
+  }
+
+  /**
+   * Add cards to field through Lisp engine
+   */
+  addCardsToField(cards) {
+    console.log('🃏 Adding cards to field:', cards);
+    
+    // Update field cards in Lisp engine game state
+    const gameState = this.lispEngine.gameState;
+    if (gameState) {
+      gameState.fieldCards = [...cards];
+      gameState.lastPlayedCards = [...cards];
+      console.log('✅ Field cards updated in Lisp engine');
+    } else {
+      console.error('❌ No game state in Lisp engine');
     }
   }
 
@@ -482,7 +507,8 @@ class LispGameController {
       // CPU plays cards
       this.showMessage(`${currentPlayer.name}がカードを出しました`);
       
-      // Remove cards from CPU hand
+      // Add cards to field and remove from CPU hand
+      this.addCardsToField(aiDecision.cards);
       aiDecision.cards.forEach(card => {
         this.lispEngine.eval(`(remove-card-from-player ${currentPlayer.id} ${JSON.stringify(card)})`);
       });
@@ -641,14 +667,20 @@ class LispGameController {
    * Update field cards display
    */
   updateFieldCards() {
+    console.log('🃏 updateFieldCards called');
     const fieldCards = document.getElementById('field-cards');
-    if (!fieldCards) return;
+    if (!fieldCards) {
+      console.error('❌ field-cards element not found');
+      return;
+    }
     
     const gameState = this.lispEngine.eval('(get-complete-game-state)');
+    console.log('🎮 Game state for field cards:', gameState);
     
     fieldCards.innerHTML = '';
     
     if (gameState.fieldCards && gameState.fieldCards.length > 0) {
+      console.log(`✅ Displaying ${gameState.fieldCards.length} field cards:`, gameState.fieldCards);
       // Show cards
       const cardsContainer = document.createElement('div');
       cardsContainer.className = 'flex justify-center space-x-2';
@@ -659,6 +691,7 @@ class LispGameController {
       });
       fieldCards.appendChild(cardsContainer);
     } else {
+      console.log('⭕ No field cards to display');
       fieldCards.innerHTML = '<div class="text-white/60 text-center py-8">場に出されたカードはありません</div>';
     }
   }
@@ -667,25 +700,58 @@ class LispGameController {
    * Update players display
    */
   updatePlayersDisplay() {
-    const playersContainer = document.getElementById('players-container');
-    if (!playersContainer) return;
+    console.log('🖥️ updatePlayersDisplay called');
+    const playersContainer = document.getElementById('players-area');
+    if (!playersContainer) {
+      console.error('❌ players-area element not found');
+      return;
+    }
+    console.log('✅ players-area element found');
     
     const allPlayers = this.lispEngine.eval('(get-all-players)');
+    console.log('🎮 All players:', allPlayers);
     
     playersContainer.innerHTML = '';
     
+    if (!allPlayers || allPlayers.length === 0) {
+      console.error('❌ No players found');
+      return;
+    }
+    console.log(`✅ Found ${allPlayers.length} players`);
+    
+    // Create container for CPU players
+    const cpuContainer = document.createElement('div');
+    cpuContainer.className = 'grid grid-cols-3 gap-4 p-4';
+    
+    let cpuCount = 0;
     allPlayers.forEach((player, index) => {
-      if (index === this.humanPlayerId) return; // Skip human player
+      if (index === this.humanPlayerId) {
+        console.log(`⏭️ Skipping human player: ${player.name}`);
+        return; // Skip human player
+      }
+      
+      console.log(`🤖 Creating CPU display for: ${player.name}`);
+      const currentPlayer = this.lispEngine.eval('(get-current-player)');
+      const isCurrentTurn = currentPlayer.id === player.id;
       
       const playerElement = document.createElement('div');
-      playerElement.className = 'player-card bg-gray-700 text-white p-4 rounded-lg';
+      playerElement.className = `player-card bg-gray-700 text-white p-3 rounded-lg border-2 ${
+        isCurrentTurn ? 'border-yellow-400 bg-gray-600' : 'border-gray-600'
+      }`;
       playerElement.innerHTML = `
-        <div class="text-lg font-bold">${player.name}</div>
-        <div class="text-sm">手札: ${player.cardCount}枚</div>
+        <div class="text-center">
+          <div class="text-lg font-bold">${player.name}</div>
+          <div class="text-sm">手札: ${player.cardCount}枚</div>
+          ${isCurrentTurn ? '<div class="text-yellow-400 text-xs mt-1">● ターン中</div>' : ''}
+        </div>
       `;
       
-      playersContainer.appendChild(playerElement);
+      cpuContainer.appendChild(playerElement);
+      cpuCount++;
     });
+    
+    playersContainer.appendChild(cpuContainer);
+    console.log(`🎯 CPU display complete: ${cpuCount} CPU players added to DOM`);
   }
 
   /**
