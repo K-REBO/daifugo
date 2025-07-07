@@ -226,6 +226,237 @@ function createEnvironment() {
   env.define('valid-rank', (rank) => {
     return VALID_RANKS.includes(rank);
   });
+
+  // Phase 7.3: Card comparison system (Refactored)
+  
+  // Card strength constants for normal and revolution modes (optimized)
+  const CARD_STRENGTH_MAP = Object.freeze({
+    normal: Object.freeze({
+      '3': 0, '4': 1, '5': 2, '6': 3, '7': 4, '8': 5, '9': 6, '10': 7,
+      'J': 8, 'Q': 9, 'K': 10, 'A': 11, '2': 12, 'JOKER': 13
+    }),
+    revolution: Object.freeze({
+      'JOKER': 0, '2': 1, 'A': 2, 'K': 3, 'Q': 4, 'J': 5, '10': 6,
+      '9': 7, '8': 8, '7': 9, '6': 10, '5': 11, '4': 12, '3': 13
+    })
+  });
+
+  // Optimized card strength lookup (O(1) instead of O(n))
+  const getCardStrength = (card, isRevolution = false) => {
+    if (!card || typeof card !== 'object' || !card.rank) {
+      throw new Error('getCardStrength: invalid card object');
+    }
+    
+    const strengthMap = isRevolution ? CARD_STRENGTH_MAP.revolution : CARD_STRENGTH_MAP.normal;
+    const strength = strengthMap[card.rank];
+    
+    if (strength === undefined) {
+      throw new Error(`getCardStrength: unknown card rank '${card.rank}'`);
+    }
+    
+    return strength;
+  };
+
+  // Hand type constants for performance
+  const HAND_TYPES = Object.freeze({
+    SINGLE: 'single',
+    PAIR: 'pair', 
+    TRIPLE: 'triple',
+    QUAD: 'quad',
+    INVALID: 'invalid'
+  });
+
+  // Optimized hand type validation
+  const validateHandTypeOptimized = (cards) => {
+    if (!Array.isArray(cards) || cards.length === 0 || cards.length > 4) {
+      return { type: HAND_TYPES.INVALID, rank: null, count: 0 };
+    }
+    
+    // Check if all cards have the same rank (early exit optimization)
+    const firstRank = cards[0]?.rank;
+    if (!firstRank) {
+      return { type: HAND_TYPES.INVALID, rank: null, count: 0 };
+    }
+    
+    for (let i = 1; i < cards.length; i++) {
+      if (cards[i]?.rank !== firstRank) {
+        return { type: HAND_TYPES.INVALID, rank: null, count: 0 };
+      }
+    }
+    
+    const count = cards.length;
+    const typeMap = {
+      1: HAND_TYPES.SINGLE,
+      2: HAND_TYPES.PAIR,
+      3: HAND_TYPES.TRIPLE,
+      4: HAND_TYPES.QUAD
+    };
+    
+    const type = typeMap[count] || HAND_TYPES.INVALID;
+    return {
+      type,
+      rank: type !== HAND_TYPES.INVALID ? firstRank : null,
+      count: type !== HAND_TYPES.INVALID ? count : 0
+    };
+  };
+
+  env.define('compare-cards', (card1, card2) => {
+    validateCard(card1, 'compare-cards');
+    validateCard(card2, 'compare-cards');
+    
+    const strength1 = getCardStrength(card1, false);
+    const strength2 = getCardStrength(card2, false);
+    
+    if (strength1 < strength2) return -1;
+    if (strength1 > strength2) return 1;
+    return 0;
+  });
+
+  env.define('compare-cards-revolution', (card1, card2) => {
+    validateCard(card1, 'compare-cards-revolution');
+    validateCard(card2, 'compare-cards-revolution');
+    
+    const strength1 = getCardStrength(card1, true);
+    const strength2 = getCardStrength(card2, true);
+    
+    if (strength1 < strength2) return -1;
+    if (strength1 > strength2) return 1;
+    return 0;
+  });
+
+  env.define('get-card-strength', (card, gameState) => {
+    validateCard(card, 'get-card-strength');
+    if (typeof gameState !== 'object' || gameState === null) {
+      throw new Error('get-card-strength: gameState must be an object');
+    }
+    
+    return getCardStrength(card, gameState.isRevolution || false);
+  });
+
+  env.define('validate-hand-type', (cards) => {
+    return validateHandTypeOptimized(cards);
+  });
+
+  env.define('is-stronger-than', (hand1, hand2) => {
+    if (!Array.isArray(hand1) || !Array.isArray(hand2)) {
+      return false;
+    }
+    
+    const validateHandType = env.lookup('validate-hand-type');
+    const type1 = validateHandType(hand1);
+    const type2 = validateHandType(hand2);
+    
+    // Both hands must be valid and same type
+    if (type1.type === 'invalid' || type2.type === 'invalid' || type1.type !== type2.type) {
+      return false;
+    }
+    
+    // Compare the card strengths
+    const strength1 = getCardStrength({ rank: type1.rank }, false);
+    const strength2 = getCardStrength({ rank: type2.rank }, false);
+    
+    return strength1 > strength2;
+  });
+
+  env.define('is-stronger-than-revolution', (hand1, hand2) => {
+    if (!Array.isArray(hand1) || !Array.isArray(hand2)) {
+      return false;
+    }
+    
+    const validateHandType = env.lookup('validate-hand-type');
+    const type1 = validateHandType(hand1);
+    const type2 = validateHandType(hand2);
+    
+    // Both hands must be valid and same type
+    if (type1.type === 'invalid' || type2.type === 'invalid' || type1.type !== type2.type) {
+      return false;
+    }
+    
+    // Compare the card strengths in revolution mode
+    const strength1 = getCardStrength({ rank: type1.rank }, true);
+    const strength2 = getCardStrength({ rank: type2.rank }, true);
+    
+    return strength1 > strength2;
+  });
+
+  env.define('compare-with-game-state', (hand1, hand2, gameState) => {
+    if (typeof gameState !== 'object' || gameState === null) {
+      throw new Error('compare-with-game-state: gameState must be an object');
+    }
+    
+    if (gameState.isRevolution) {
+      const isStrongerRevolution = env.lookup('is-stronger-than-revolution');
+      return isStrongerRevolution(hand1, hand2);
+    } else {
+      const isStronger = env.lookup('is-stronger-than');
+      return isStronger(hand1, hand2);
+    }
+  });
+
+  env.define('can-play-on-field', (playCards, fieldCards) => {
+    if (!Array.isArray(playCards) || !Array.isArray(fieldCards)) {
+      return false;
+    }
+    
+    const validateHandType = env.lookup('validate-hand-type');
+    
+    // Empty field means any valid play is allowed
+    if (fieldCards.length === 0) {
+      const playType = validateHandType(playCards);
+      return playType.type !== 'invalid';
+    }
+    
+    const playType = validateHandType(playCards);
+    const fieldType = validateHandType(fieldCards);
+    
+    // Must be same type and stronger
+    if (playType.type === 'invalid' || fieldType.type === 'invalid' || playType.type !== fieldType.type) {
+      return false;
+    }
+    
+    const isStronger = env.lookup('is-stronger-than');
+    return isStronger(playCards, fieldCards);
+  });
+
+  // Unified comparison function with enhanced features
+  env.define('compare-hands-unified', (hand1, hand2, gameState = null) => {
+    if (!Array.isArray(hand1) || !Array.isArray(hand2)) {
+      return { canCompare: false, stronger: null, reason: 'Invalid hand arrays' };
+    }
+    
+    const type1 = validateHandTypeOptimized(hand1);
+    const type2 = validateHandTypeOptimized(hand2);
+    
+    // Check if hands are valid
+    if (type1.type === HAND_TYPES.INVALID) {
+      return { canCompare: false, stronger: null, reason: 'Hand 1 is invalid' };
+    }
+    if (type2.type === HAND_TYPES.INVALID) {
+      return { canCompare: false, stronger: null, reason: 'Hand 2 is invalid' };
+    }
+    
+    // Check if hands are same type
+    if (type1.type !== type2.type) {
+      return { canCompare: false, stronger: null, reason: 'Different hand types' };
+    }
+    
+    // Compare card strengths
+    const isRevolution = gameState?.isRevolution || false;
+    const strength1 = getCardStrength({ rank: type1.rank }, isRevolution);
+    const strength2 = getCardStrength({ rank: type2.rank }, isRevolution);
+    
+    if (strength1 === strength2) {
+      return { canCompare: true, stronger: 'tie', reason: 'Equal strength' };
+    }
+    
+    return {
+      canCompare: true,
+      stronger: strength1 > strength2 ? 'hand1' : 'hand2',
+      reason: `${type1.type} comparison`,
+      strength1,
+      strength2
+    };
+  });
   
   return env;
 }
