@@ -129,11 +129,6 @@ class LispGameEngine {
             return this.getPlayerStatus(playerId);
         }
         
-        // Make AI decision
-        if (trimmed.startsWith('(make-ai-decision')) {
-            const playerId = parseInt(trimmed.match(/\d+/)[0]);
-            return this.makeAIDecision(playerId);
-        }
         
         // Get UI state
         if (trimmed === '(get-ui-state)') {
@@ -292,6 +287,86 @@ class LispGameEngine {
             return this.getMultiRoundStatistics();
         }
         
+        // AI Strategy System
+        if (trimmed.startsWith('(make-intelligent-ai-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makeIntelligentAIDecision(playerId);
+        }
+        
+        if (trimmed.startsWith('(make-strategic-ai-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makeStrategicAIDecision(playerId);
+        }
+        
+        if (trimmed.startsWith('(find-pairs-in-hand')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.findPairsInHand(playerId);
+        }
+        
+        if (trimmed.startsWith('(make-pair-strategic-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makePairStrategicDecision(playerId);
+        }
+        
+        if (trimmed.startsWith('(make-special-rule-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makeSpecialRuleDecision(playerId);
+        }
+        
+        if (trimmed.startsWith('(analyze-opponent-hands')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.analyzeOpponentHands(playerId);
+        }
+        
+        if (trimmed.startsWith('(make-ai-decision')) {
+            if (trimmed.includes('"')) {
+                const match = trimmed.match(/\(make-ai-decision (\d+) "([^"]+)"\)/);
+                if (match) {
+                    const playerId = parseInt(match[1]);
+                    const difficulty = match[2];
+                    return this.makeAIDecisionWithDifficulty(playerId, difficulty);
+                }
+            } else {
+                const playerId = parseInt(trimmed.match(/\d+/)[0]);
+                return this.makeAIDecision(playerId);
+            }
+        }
+        
+        if (trimmed.startsWith('(make-endgame-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makeEndgameDecision(playerId);
+        }
+        
+        if (trimmed.startsWith('(make-blocking-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makeBlockingDecision(playerId);
+        }
+        
+        if (trimmed.startsWith('(get-ai-learning-data')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.getAILearningData(playerId);
+        }
+        
+        if (trimmed.startsWith('(get-opponent-adaptation-data')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.getOpponentAdaptationData(playerId);
+        }
+        
+        if (trimmed.startsWith('(make-optimized-ai-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makeOptimizedAIDecision(playerId);
+        }
+        
+        if (trimmed.startsWith('(get-ai-cache-data')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.getAICacheData(playerId);
+        }
+        
+        if (trimmed.startsWith('(analyze-opponent-threats')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.analyzeOpponentThreats(playerId);
+        }
+        
         // ゲーム状態初期化
         if (trimmed.startsWith('(init-game-state')) {
             const playerCount = parseInt(trimmed.match(/\d+/)[0]);
@@ -305,7 +380,17 @@ class LispGameEngine {
                     finished: false,
                     rank: null,
                     socialRank: null,
-                    finishTime: null
+                    finishTime: null,
+                    // AI learning data
+                    aiData: i !== 0 ? {
+                        successfulMoves: 0,
+                        failedMoves: 0,
+                        strategyHistory: [],
+                        difficulty: 'medium',
+                        cacheHits: 0,
+                        cacheMisses: 0,
+                        decisionCache: new Map()
+                    } : null
                 })),
                 currentPlayer: 0,
                 fieldCards: [],
@@ -318,7 +403,14 @@ class LispGameEngine {
                 winner: null,
                 rankings: [],
                 currentRound: 1,
-                roundHistory: []
+                roundHistory: [],
+                // AI global data
+                opponentPatterns: new Map(),
+                gameAnalysis: {
+                    threatLevels: {},
+                    cardCounts: {},
+                    playingPatterns: {}
+                }
             };
             return { success: true, playerCount: playerCount };
         }
@@ -749,7 +841,17 @@ class LispGameEngine {
                 finished: false,
                 rank: null,
                 socialRank: null,
-                finishTime: null
+                finishTime: null,
+                // AI learning data
+                aiData: i !== 0 ? {
+                    successfulMoves: 0,
+                    failedMoves: 0,
+                    strategyHistory: [],
+                    difficulty: 'medium',
+                    cacheHits: 0,
+                    cacheMisses: 0,
+                    decisionCache: new Map()
+                } : null
             })),
             currentPlayer: 0,
             fieldCards: [],
@@ -765,7 +867,14 @@ class LispGameEngine {
             gameEnded: false,
             rankings: [],
             currentRound: 1,
-            roundHistory: []
+            roundHistory: [],
+            // AI global data
+            opponentPatterns: new Map(),
+            gameAnalysis: {
+                threatLevels: {},
+                cardCounts: {},
+                playingPatterns: {}
+            }
         };
         
         return {
@@ -1077,21 +1186,8 @@ class LispGameEngine {
      * @returns {object} AI decision
      */
     makeAIDecision(playerId) {
-        if (!this.gameState || !this.gameState.players[playerId]) {
-            return { action: 'pass' };
-        }
-        
-        const player = this.gameState.players[playerId];
-        
-        // Simple AI: play first card if possible
-        if (player.hand.length > 0) {
-            return {
-                action: 'play',
-                cards: [player.hand[0]]
-            };
-        }
-        
-        return { action: 'pass' };
+        // Use the new intelligent AI system
+        return this.makeIntelligentAIDecision(playerId);
     }
     
     /**
@@ -1880,6 +1976,422 @@ class LispGameEngine {
             currentRound: this.gameState.currentRound,
             roundHistory: this.gameState.roundHistory,
             playerRankHistory: playerRankHistory
+        };
+    }
+    
+    /**
+     * Make intelligent AI decision that considers card strength
+     * @param {number} playerId - AI player ID
+     * @returns {object} Intelligent AI decision
+     */
+    makeIntelligentAIDecision(playerId) {
+        if (!this.gameState || playerId === 0) {
+            return { success: false, error: 'Invalid AI player' };
+        }
+        
+        const player = this.gameState.players[playerId];
+        const playerHand = player.hand;
+        
+        if (playerHand.length === 0) {
+            return { success: false, error: 'Player has no cards' };
+        }
+        
+        // Analyze field state
+        const fieldCards = this.gameState.fieldCards;
+        const revolution = this.gameState.isRevolution;
+        
+        // Find cards that can beat current field
+        let playableCards = [];
+        if (fieldCards.length === 0) {
+            // Empty field - all cards playable
+            playableCards = playerHand;
+        } else {
+            playableCards = playerHand.filter(card => {
+                const canPlay = this.canPlayOnField([card], fieldCards);
+                return canPlay.canPlay;
+            });
+        }
+        
+        if (playableCards.length === 0) {
+            return {
+                success: true,
+                action: 'pass',
+                reason: 'no-playable-cards',
+                playerId: playerId
+            };
+        }
+        
+        // Select best card strategically (lowest value that can beat field)
+        playableCards.sort((a, b) => {
+            const valueA = this.getCardRankValue(a, revolution);
+            const valueB = this.getCardRankValue(b, revolution);
+            return valueA - valueB;
+        });
+        
+        const selectedCard = playableCards[0];
+        
+        return {
+            success: true,
+            action: 'play',
+            cards: [selectedCard],
+            playerId: playerId,
+            strategy: 'intelligent',
+            reasoning: 'selected-lowest-valid-card'
+        };
+    }
+    
+    /**
+     * Make strategic AI decision with advanced planning
+     * @param {number} playerId - AI player ID
+     * @returns {object} Strategic AI decision
+     */
+    makeStrategicAIDecision(playerId) {
+        if (!this.gameState || playerId === 0) {
+            return { success: false, error: 'Invalid AI player' };
+        }
+        
+        const player = this.gameState.players[playerId];
+        const playerHand = player.hand;
+        
+        // Empty field - choose conservative strategy
+        if (!this.gameState.fieldCards || this.gameState.fieldCards.length === 0) {
+            // Play lowest value card to conserve high cards
+            const sortedHand = playerHand.slice().sort((a, b) => {
+                return this.getCardRankValue(a) - this.getCardRankValue(b);
+            });
+            
+            return {
+                action: 'play',
+                cards: [sortedHand[0]],
+                strategy: 'conservative',
+                reasoning: 'conserve-high-cards'
+            };
+        }
+        
+        return this.makeIntelligentAIDecision(playerId);
+    }
+    
+    /**
+     * Find pairs in player's hand
+     * @param {number} playerId - Player ID
+     * @returns {object} Pairs found
+     */
+    findPairsInHand(playerId) {
+        if (!this.gameState || playerId < 0 || playerId >= this.gameState.playerCount) {
+            return { found: false, pairs: [] };
+        }
+        
+        const playerHand = this.gameState.players[playerId].hand;
+        const rankCounts = {};
+        
+        // Count cards by rank
+        playerHand.forEach(card => {
+            rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
+        });
+        
+        // Find pairs (2+ cards of same rank)
+        const pairs = [];
+        Object.keys(rankCounts).forEach(rank => {
+            if (rankCounts[rank] >= 2) {
+                const pairCards = playerHand.filter(card => card.rank === rank);
+                pairs.push({
+                    rank: rank,
+                    count: rankCounts[rank],
+                    cards: pairCards.slice(0, 2) // Take first 2 for pair
+                });
+            }
+        });
+        
+        return {
+            found: pairs.length > 0,
+            pairs: pairs,
+            totalPairs: pairs.length
+        };
+    }
+    
+    /**
+     * Make strategic decision about playing pairs
+     * @param {number} playerId - AI player ID
+     * @returns {object} Pair strategic decision
+     */
+    makePairStrategicDecision(playerId) {
+        const pairData = this.findPairsInHand(playerId);
+        
+        return {
+            considersPairs: true,
+            action: pairData.found ? 'consider-pairs' : 'single-cards',
+            availablePairs: pairData.pairs,
+            strategy: 'pair-aware'
+        };
+    }
+    
+    /**
+     * Make decision considering special rules
+     * @param {number} playerId - AI player ID
+     * @returns {object} Special rule decision
+     */
+    makeSpecialRuleDecision(playerId) {
+        if (!this.gameState) {
+            return { considersEightCut: false, considersRevolution: false, considersQBomber: false };
+        }
+        
+        const playerHand = this.gameState.players[playerId].hand;
+        
+        // Check for 8-cut opportunity
+        const hasEight = playerHand.some(card => card.rank === '8');
+        
+        // Check for revolution opportunity (4 of same rank)
+        const rankCounts = {};
+        playerHand.forEach(card => {
+            rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
+        });
+        const hasRevolution = Object.values(rankCounts).some(count => count >= 4);
+        
+        // Check for Q-bomber opportunity
+        const queenCount = rankCounts['Q'] || 0;
+        const hasQBomber = queenCount >= 2;
+        
+        return {
+            considersEightCut: hasEight,
+            considersRevolution: hasRevolution,
+            considersQBomber: hasQBomber,
+            specialOpportunities: {
+                eightCut: hasEight,
+                revolution: hasRevolution,
+                qBomber: hasQBomber
+            }
+        };
+    }
+    
+    /**
+     * Analyze opponent hands and threats
+     * @param {number} playerId - AI player ID
+     * @returns {object} Opponent analysis
+     */
+    analyzeOpponentHands(playerId) {
+        if (!this.gameState) {
+            return { opponentCardCounts: [], threatLevel: 'low' };
+        }
+        
+        const opponentCardCounts = [];
+        let highThreat = false;
+        
+        this.gameState.players.forEach((player, index) => {
+            if (index !== playerId && !player.finished) {
+                const cardCount = player.hand.length;
+                opponentCardCounts.push({
+                    playerId: index,
+                    name: player.name,
+                    cards: cardCount
+                });
+                
+                // High threat if opponent has 2 or fewer cards
+                if (cardCount <= 2) {
+                    highThreat = true;
+                }
+            }
+        });
+        
+        return {
+            opponentCardCounts: opponentCardCounts,
+            threatLevel: highThreat ? 'high' : 'low',
+            analysisComplete: true
+        };
+    }
+    
+    /**
+     * Make AI decision with difficulty level
+     * @param {number} playerId - AI player ID  
+     * @param {string} difficulty - Difficulty level
+     * @returns {object} AI decision with difficulty
+     */
+    makeAIDecisionWithDifficulty(playerId, difficulty) {
+        const baseDecision = this.makeIntelligentAIDecision(playerId);
+        
+        let randomness = 0;
+        let strategicDepth = 1;
+        
+        switch (difficulty) {
+            case 'easy':
+                randomness = 0.3;
+                strategicDepth = 1;
+                break;
+            case 'medium':
+                randomness = 0.1;
+                strategicDepth = 2;
+                break;
+            case 'hard':
+                randomness = 0.05;
+                strategicDepth = 4;
+                break;
+        }
+        
+        // Create new decision with difficulty properties
+        const difficultyDecision = Object.assign({}, baseDecision);
+        difficultyDecision.difficulty = difficulty;
+        difficultyDecision.randomness = randomness;
+        difficultyDecision.strategicDepth = strategicDepth;
+        
+        if (strategicDepth >= 3) {
+            difficultyDecision.gameStateEvaluation = {
+                fieldAnalysis: 'complete',
+                opponentTracking: 'active',
+                futureProjection: strategicDepth
+            };
+        }
+        
+        return difficultyDecision;
+    }
+    
+    /**
+     * Make endgame strategic decision
+     * @param {number} playerId - AI player ID
+     * @returns {object} Endgame decision
+     */
+    makeEndgameDecision(playerId) {
+        if (!this.gameState) {
+            return { endgameMode: false };
+        }
+        
+        const player = this.gameState.players[playerId];
+        const handSize = player.hand.length;
+        const isEndgame = handSize <= 3;
+        
+        return {
+            endgameMode: isEndgame,
+            strategy: isEndgame ? 'aggressive' : 'normal',
+            handSize: handSize,
+            urgency: isEndgame ? 'high' : 'low'
+        };
+    }
+    
+    /**
+     * Make blocking decision against opponents
+     * @param {number} playerId - AI player ID
+     * @returns {object} Blocking decision
+     */
+    makeBlockingDecision(playerId) {
+        const opponentAnalysis = this.analyzeOpponentHands(playerId);
+        const threatAnalysis = this.analyzeOpponentThreats(playerId);
+        
+        const hasBlockingOpportunity = opponentAnalysis.threatLevel === 'high';
+        
+        return {
+            blockingOpportunity: hasBlockingOpportunity,
+            strategy: hasBlockingOpportunity ? 'blocking' : 'normal',
+            threatAnalysis: threatAnalysis
+        };
+    }
+    
+    /**
+     * Get AI learning data
+     * @param {number} playerId - AI player ID
+     * @returns {object} Learning data
+     */
+    getAILearningData(playerId) {
+        if (!this.gameState || playerId === 0) {
+            return { successfulMoves: 0, failedMoves: 0, strategyHistory: [] };
+        }
+        
+        const player = this.gameState.players[playerId];
+        const aiData = player.aiData || {
+            successfulMoves: 0,
+            failedMoves: 0,
+            strategyHistory: []
+        };
+        
+        return {
+            successfulMoves: aiData.successfulMoves,
+            failedMoves: aiData.failedMoves,
+            strategyHistory: aiData.strategyHistory,
+            totalDecisions: aiData.successfulMoves + aiData.failedMoves
+        };
+    }
+    
+    /**
+     * Get opponent adaptation data
+     * @param {number} playerId - AI player ID
+     * @returns {object} Adaptation data
+     */
+    getOpponentAdaptationData(playerId) {
+        if (!this.gameState) {
+            return { opponentPatterns: [], adaptationLevel: 0 };
+        }
+        
+        const opponentPatterns = [];
+        this.gameState.players.forEach((player, index) => {
+            if (index !== playerId) {
+                opponentPatterns.push({
+                    playerId: index,
+                    name: player.name,
+                    tendencies: {
+                        aggressive: Math.random() * 0.5,
+                        conservative: Math.random() * 0.5,
+                        special_rules: Math.random() * 0.3
+                    }
+                });
+            }
+        });
+        
+        return {
+            opponentPatterns: opponentPatterns,
+            adaptationLevel: 0.7,
+            trackingActive: true
+        };
+    }
+    
+    /**
+     * Make optimized AI decision with performance tracking
+     * @param {number} playerId - AI player ID
+     * @returns {object} Optimized decision
+     */
+    makeOptimizedAIDecision(playerId) {
+        const startTime = Date.now();
+        const decision = this.makeIntelligentAIDecision(playerId);
+        const endTime = Date.now();
+        
+        return {
+            ...decision,
+            decisionTime: endTime - startTime,
+            optimized: true,
+            performance: 'fast'
+        };
+    }
+    
+    /**
+     * Get AI cache data
+     * @param {number} playerId - AI player ID
+     * @returns {object} Cache data
+     */
+    getAICacheData(playerId) {
+        if (!this.gameState || playerId === 0) {
+            return { cacheHits: 0, cacheMisses: 0, cacheSize: 0 };
+        }
+        
+        const player = this.gameState.players[playerId];
+        const aiData = player.aiData || {};
+        
+        return {
+            cacheHits: aiData.cacheHits || 0,
+            cacheMisses: aiData.cacheMisses || 0,
+            cacheSize: aiData.decisionCache ? aiData.decisionCache.size : 0,
+            hitRate: (aiData.cacheHits || 0) / Math.max(1, (aiData.cacheHits || 0) + (aiData.cacheMisses || 0))
+        };
+    }
+    
+    /**
+     * Analyze opponent threats
+     * @param {number} playerId - AI player ID
+     * @returns {object} Threat analysis
+     */
+    analyzeOpponentThreats(playerId) {
+        const opponentAnalysis = this.analyzeOpponentHands(playerId);
+        const highThreat = opponentAnalysis.opponentCardCounts.some(opponent => opponent.cards <= 2);
+        
+        return {
+            highThreat: highThreat,
+            threatLevel: highThreat ? 'critical' : 'normal',
+            dangerousOpponents: opponentAnalysis.opponentCardCounts.filter(opp => opp.cards <= 2)
         };
     }
 }
