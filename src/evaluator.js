@@ -131,6 +131,101 @@ function createEnvironment() {
 
   // Mathematical modulo operation
   env.define('%', (a, b) => a % b);
+
+  // Phase 7.2: Card operations (Refactored)
+  
+  // Constants for card validation (shared across functions)
+  const VALID_SUITS = Object.freeze(['♠', '♥', '♦', '♣', null]);
+  const VALID_RANKS = Object.freeze(['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'JOKER']);
+  const REGULAR_SUITS = Object.freeze(['♠', '♥', '♦', '♣']);
+  const REGULAR_RANKS = Object.freeze(['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2']);
+
+  // Helper function for card validation
+  const validateCard = (card, functionName) => {
+    if (typeof card !== 'object' || card === null) {
+      throw new Error(`${functionName}: argument must be a card object`);
+    }
+  };
+
+  // Fisher-Yates shuffle algorithm for optimal randomization
+  const fisherYatesShuffle = (array) => {
+    const result = [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  };
+
+  env.define('create-deck', () => {
+    const deck = [];
+    
+    // Create regular cards using pre-defined constants
+    REGULAR_SUITS.forEach(suit => {
+      REGULAR_RANKS.forEach(rank => {
+        deck.push(Object.freeze({ suit, rank })); // Immutable card objects
+      });
+    });
+    
+    // Add immutable jokers
+    deck.push(Object.freeze({ suit: null, rank: 'JOKER' }));
+    deck.push(Object.freeze({ suit: null, rank: 'JOKER' }));
+    
+    return Object.freeze(deck); // Immutable deck
+  });
+
+  env.define('shuffle-deck', (deck) => {
+    if (!Array.isArray(deck)) {
+      throw new Error('shuffle-deck: argument must be a deck (array of cards)');
+    }
+    return fisherYatesShuffle(deck);
+  });
+
+  env.define('create-card', (suit, rank) => {
+    if (!VALID_SUITS.includes(suit)) {
+      throw new Error(`create-card: invalid suit '${suit}'`);
+    }
+    if (!VALID_RANKS.includes(rank)) {
+      throw new Error(`create-card: invalid rank '${rank}'`);
+    }
+    return Object.freeze({ suit, rank });
+  });
+
+  env.define('create-joker', () => {
+    return Object.freeze({ suit: null, rank: 'JOKER' });
+  });
+
+  env.define('card-suit', (card) => {
+    validateCard(card, 'card-suit');
+    return card.suit;
+  });
+
+  env.define('card-rank', (card) => {
+    validateCard(card, 'card-rank');
+    return card.rank;
+  });
+
+  env.define('is-joker', (card) => {
+    if (typeof card !== 'object' || card === null) {
+      return false;
+    }
+    return card.rank === 'JOKER';
+  });
+
+  env.define('valid-card', (card) => {
+    if (typeof card !== 'object' || card === null) {
+      return false;
+    }
+    return VALID_SUITS.includes(card.suit) && VALID_RANKS.includes(card.rank);
+  });
+
+  env.define('valid-suit', (suit) => {
+    return VALID_SUITS.includes(suit);
+  });
+
+  env.define('valid-rank', (rank) => {
+    return VALID_RANKS.includes(rank);
+  });
   
   return env;
 }
@@ -139,6 +234,11 @@ function evaluate(expr, env) {
   // Self-evaluating expressions
   if (typeof expr === 'number' || typeof expr === 'boolean') {
     return expr;
+  }
+  
+  // null is self-evaluating
+  if (expr === null) {
+    return null;
   }
   
   // Strings are self-evaluating
