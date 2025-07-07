@@ -329,4 +329,87 @@ describe('Pure Lisp Game Engine', () => {
       expect(updatedState).toEqual(initialState); // should return original state
     });
   });
+
+  describe('Pure Lisp Turn Processing System', () => {
+    test('should process card play turn', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const cards = [evaluate([sym('create-card'), '♠', '8'], env)];
+      const playerAction = { type: "play", cards: cards, player: 0 };
+      
+      const newState = evaluate([sym('process-turn'), [sym('quote'), gameState], [sym('quote'), playerAction]], env);
+      
+      expect(newState[0]).toBe("game-state");
+      expect(newState[2]).toBe(1); // current player should advance to 1
+      expect(newState[3]).toEqual(cards); // field cards should be set
+    });
+
+    test('should process pass turn', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const passAction = { type: "pass", player: 0 };
+      
+      const newState = evaluate([sym('process-turn'), [sym('quote'), gameState], [sym('quote'), passAction]], env);
+      
+      expect(newState[0]).toBe("game-state");
+      expect(newState[2]).toBe(1); // current player should advance to 1
+      expect(newState[3]).toBe(null); // field cards should remain null
+    });
+
+    test('should advance turn with basic state changes', () => {
+      const gameState = evaluate([sym('init-game-state'), 3], env);
+      const advancedState = evaluate([sym('advance-turn'), [sym('quote'), gameState]], env);
+      
+      expect(advancedState[2]).toBe(1); // current player should advance from 0 to 1
+    });
+
+    test('should handle consecutive passes and clear field', () => {
+      // Start with a game state where 3 players have passed
+      const gameState = ["game-state", 4, 0, [evaluate([sym('create-card'), '♥', 'K'], env)], { consecutivePasses: 3 }];
+      const passAction = { type: "pass", player: 0 };
+      
+      const newState = evaluate([sym('process-turn'), [sym('quote'), gameState], [sym('quote'), passAction]], env);
+      
+      // After 4th consecutive pass, field should be cleared
+      expect(newState[3]).toBe(null); // field should be cleared
+      expect(newState[2]).toBe(1); // turn should advance
+    });
+
+    test('should reset consecutive pass counter on card play', () => {
+      // Start with some consecutive passes
+      const gameState = ["game-state", 4, 0, null, { consecutivePasses: 2 }];
+      const cards = [evaluate([sym('create-card'), '♦', '7'], env)];
+      const playAction = { type: "play", cards: cards, player: 0 };
+      
+      const newState = evaluate([sym('process-turn'), [sym('quote'), gameState], [sym('quote'), playAction]], env);
+      
+      expect(newState[4]).toEqual({ consecutivePasses: 0 }); // pass counter should reset
+      expect(newState[3]).toEqual(cards); // field cards should be set
+    });
+
+    test('should track consecutive passes accurately', () => {
+      const initialState = evaluate([sym('init-game-state'), 3], env);
+      const passAction1 = { type: "pass", player: 0 };
+      const passAction2 = { type: "pass", player: 1 };
+      
+      const state1 = evaluate([sym('process-turn'), [sym('quote'), initialState], [sym('quote'), passAction1]], env);
+      const state2 = evaluate([sym('process-turn'), [sym('quote'), state1], [sym('quote'), passAction2]], env);
+      
+      expect(state2[4]).toEqual({ consecutivePasses: 2 });
+    });
+
+    test('should determine when field should be cleared', () => {
+      const gameState = ["game-state", 4, 0, [evaluate([sym('create-card'), '♠', 'A'], env)], { consecutivePasses: 3 }];
+      
+      const shouldClear = evaluate([sym('should-clear-field'), [sym('quote'), gameState]], env);
+      expect(shouldClear).toBe(true); // 3 passes in 4-player game means next pass clears field
+    });
+
+    test('should handle turn wrapping correctly', () => {
+      const gameState = ["game-state", 3, 2, null]; // player 2 in 3-player game
+      const passAction = { type: "pass", player: 2 };
+      
+      const newState = evaluate([sym('process-turn'), [sym('quote'), gameState], [sym('quote'), passAction]], env);
+      
+      expect(newState[2]).toBe(0); // should wrap to player 0
+    });
+  });
 });
