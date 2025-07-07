@@ -492,76 +492,86 @@ function createEnvironment() {
     return state[2];
   });
 
-  // Turn Processing System Functions
+  // Turn Processing System Functions - Optimized and integrated
   env.define('process-turn', (state, action) => {
-    // Validate inputs
-    if (!Array.isArray(state) || state[0] !== "game-state") {
-      throw new Error('process-turn: invalid game state format');
-    }
-    if (!action || typeof action.type !== 'string') {
-      throw new Error('process-turn: action must have a type property');
-    }
+    validateGameState(state, 'process-turn');
+    validateAction(action, 'process-turn');
 
     const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = state;
     const currentGameData = gameData || { consecutivePasses: 0 };
 
     switch (action.type) {
-      case "play": {
-        // Reset consecutive passes on card play
-        const newGameData = { consecutivePasses: 0 };
-        const newState = [gameStateType, playerCount, currentPlayer, action.cards, newGameData];
-        return advanceTurn(newState);
-      }
+      case "play":
+        return processPlayAction(state, action);
       
-      case "pass": {
-        // Increment consecutive passes
-        const newPassCount = currentGameData.consecutivePasses + 1;
-        const newGameData = { consecutivePasses: newPassCount };
-        
-        // Check if field should be cleared (all other players passed)
-        if (newPassCount >= playerCount - 1) {
-          // Clear field and reset passes
-          const clearedState = [gameStateType, playerCount, currentPlayer, null, { consecutivePasses: 0 }];
-          return advanceTurn(clearedState);
-        } else {
-          // Keep field, advance turn
-          const newState = [gameStateType, playerCount, currentPlayer, fieldCards, newGameData];
-          return advanceTurn(newState);
-        }
-      }
+      case "pass":
+        return processPassAction(state, currentGameData, playerCount);
       
       default:
-        throw new Error(`process-turn: unknown action type '${action.type}'`);
+        throw new Error(`process-turn: unsupported action type '${action.type}'. Supported types: 'play', 'pass'`);
     }
   });
 
   env.define('advance-turn', (state) => {
-    if (!Array.isArray(state) || state[0] !== "game-state") {
-      throw new Error('advance-turn: invalid game state format');
-    }
-    
-    const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = state;
-    const nextPlayer = (currentPlayer + 1) % playerCount;
-    
-    return Object.freeze([gameStateType, playerCount, nextPlayer, fieldCards, gameData]);
+    validateGameState(state, 'advance-turn');
+    return advanceTurnInternal(state);
   });
 
   env.define('should-clear-field', (state) => {
-    if (!Array.isArray(state) || state[0] !== "game-state") {
-      throw new Error('should-clear-field: invalid game state format');
-    }
+    validateGameState(state, 'should-clear-field');
     
     const [, playerCount, , , gameData] = state;
     if (!gameData || typeof gameData.consecutivePasses !== 'number') {
       return false;
     }
     
-    // Field should be cleared if all other players have passed
-    return gameData.consecutivePasses >= playerCount - 1;
+    return shouldClearFieldInternal(gameData.consecutivePasses, playerCount);
   });
 
-  // Helper function for internal use
-  function advanceTurn(state) {
+  // Helper functions for turn processing system
+  function validateGameState(state, functionName) {
+    if (!Array.isArray(state) || state[0] !== "game-state") {
+      throw new Error(`${functionName}: invalid game state format`);
+    }
+  }
+
+  function validateAction(action, functionName) {
+    if (!action || typeof action.type !== 'string') {
+      throw new Error(`${functionName}: action must have a type property`);
+    }
+  }
+
+  function processPlayAction(state, action) {
+    if (!action.cards || !Array.isArray(action.cards)) {
+      throw new Error('process-turn: play action must include cards array');
+    }
+    
+    const [gameStateType, playerCount, currentPlayer] = state;
+    const newGameData = { consecutivePasses: 0 };
+    const newState = [gameStateType, playerCount, currentPlayer, action.cards, newGameData];
+    return advanceTurnInternal(newState);
+  }
+
+  function processPassAction(state, currentGameData, playerCount) {
+    const [gameStateType, , currentPlayer, fieldCards] = state;
+    const newPassCount = currentGameData.consecutivePasses + 1;
+    
+    // Field clearing logic: if all other players have passed
+    if (shouldClearFieldInternal(newPassCount, playerCount)) {
+      const clearedState = [gameStateType, playerCount, currentPlayer, null, { consecutivePasses: 0 }];
+      return advanceTurnInternal(clearedState);
+    } else {
+      const newGameData = { consecutivePasses: newPassCount };
+      const newState = [gameStateType, playerCount, currentPlayer, fieldCards, newGameData];
+      return advanceTurnInternal(newState);
+    }
+  }
+
+  function shouldClearFieldInternal(passCount, playerCount) {
+    return passCount >= playerCount - 1;
+  }
+
+  function advanceTurnInternal(state) {
     const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = state;
     const nextPlayer = (currentPlayer + 1) % playerCount;
     return Object.freeze([gameStateType, playerCount, nextPlayer, fieldCards, gameData]);

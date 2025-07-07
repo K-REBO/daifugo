@@ -411,5 +411,29 @@ describe('Pure Lisp Game Engine', () => {
       
       expect(newState[2]).toBe(0); // should wrap to player 0
     });
+
+    test('should validate inputs and provide clear error messages', () => {
+      const validState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Test invalid game state
+      expect(() => {
+        evaluate([sym('process-turn'), [sym('quote'), ["invalid-state"]], [sym('quote'), { type: "pass" }]], env);
+      }).toThrow('process-turn: invalid game state format');
+      
+      // Test invalid action
+      expect(() => {
+        evaluate([sym('process-turn'), [sym('quote'), validState], [sym('quote'), {}]], env);
+      }).toThrow('process-turn: action must have a type property');
+      
+      // Test unsupported action type
+      expect(() => {
+        evaluate([sym('process-turn'), [sym('quote'), validState], [sym('quote'), { type: "invalid-action" }]], env);
+      }).toThrow('process-turn: unsupported action type \'invalid-action\'. Supported types: \'play\', \'pass\'');
+      
+      // Test play action without cards
+      expect(() => {
+        evaluate([sym('process-turn'), [sym('quote'), validState], [sym('quote'), { type: "play" }]], env);
+      }).toThrow('process-turn: play action must include cards array');
+    });
   });
 });
