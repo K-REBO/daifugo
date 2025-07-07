@@ -233,6 +233,65 @@ class LispGameEngine {
             return this.getPlayableCardsFromHand();
         }
         
+        // Game ending and ranking system
+        if (trimmed.startsWith('(check-player-finished')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.checkPlayerFinished(playerId);
+        }
+        
+        if (trimmed.startsWith('(player-finish')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.playerFinish(playerId);
+        }
+        
+        if (trimmed === '(get-current-rankings)') {
+            return this.getCurrentRankings();
+        }
+        
+        if (trimmed === '(get-social-rankings)') {
+            return this.getSocialRankings();
+        }
+        
+        if (trimmed === '(check-game-end)') {
+            return this.checkGameEnd();
+        }
+        
+        if (trimmed === '(get-final-rankings)') {
+            return this.getFinalRankings();
+        }
+        
+        if (trimmed === '(get-finish-order)') {
+            return this.getFinishOrder();
+        }
+        
+        if (trimmed === '(get-complete-social-rankings)') {
+            return this.getCompleteSocialRankings();
+        }
+        
+        if (trimmed === '(get-ranking-statistics)') {
+            return this.getRankingStatistics();
+        }
+        
+        if (trimmed === '(validate-move-after-game-end)') {
+            return this.validateMoveAfterGameEnd();
+        }
+        
+        if (trimmed === '(get-game-summary)') {
+            return this.getGameSummary();
+        }
+        
+        if (trimmed === '(prepare-next-round)') {
+            return this.prepareNextRound();
+        }
+        
+        if (trimmed === '(get-card-exchange-rules)') {
+            return this.getCardExchangeRules();
+        }
+        
+        if (trimmed === '(get-multi-round-statistics)') {
+            return this.getMultiRoundStatistics();
+        }
+        
         // ゲーム状態初期化
         if (trimmed.startsWith('(init-game-state')) {
             const playerCount = parseInt(trimmed.match(/\d+/)[0]);
@@ -242,7 +301,11 @@ class LispGameEngine {
                     id: i,
                     hand: [],
                     name: i === 0 ? 'Human' : `CPU${i}`,
-                    passCount: 0
+                    passCount: 0,
+                    finished: false,
+                    rank: null,
+                    socialRank: null,
+                    finishTime: null
                 })),
                 currentPlayer: 0,
                 fieldCards: [],
@@ -250,7 +313,12 @@ class LispGameEngine {
                 isRevolution: false,
                 consecutivePasses: 0,
                 lastPlayerToPlay: null,
-                turnNumber: 0
+                turnNumber: 0,
+                gameEnded: false,
+                winner: null,
+                rankings: [],
+                currentRound: 1,
+                roundHistory: []
             };
             return { success: true, playerCount: playerCount };
         }
@@ -677,7 +745,11 @@ class LispGameEngine {
                 hand: [],
                 name: i === 0 ? 'Human' : `CPU${i}`,
                 isAI: i !== 0,
-                passCount: 0
+                passCount: 0,
+                finished: false,
+                rank: null,
+                socialRank: null,
+                finishTime: null
             })),
             currentPlayer: 0,
             fieldCards: [],
@@ -689,7 +761,11 @@ class LispGameEngine {
             deck: [],
             consecutivePasses: 0,
             lastPlayerToPlay: null,
-            turnNumber: 0
+            turnNumber: 0,
+            gameEnded: false,
+            rankings: [],
+            currentRound: 1,
+            roundHistory: []
         };
         
         return {
@@ -846,7 +922,10 @@ class LispGameEngine {
                 name: p.name,
                 cardCount: p.hand.length,
                 isAI: p.isAI,
-                passCount: p.passCount || 0
+                passCount: p.passCount || 0,
+                finished: p.finished || false,
+                rank: p.rank,
+                socialRank: p.socialRank
             })),
             currentPlayer: this.gameState.currentPlayer,
             fieldCards: this.gameState.fieldCards,
@@ -854,7 +933,9 @@ class LispGameEngine {
             turnCount: this.gameState.turnCount,
             winner: this.gameState.winner,
             consecutivePasses: this.gameState.consecutivePasses || 0,
-            turnNumber: this.gameState.turnNumber || 0
+            turnNumber: this.gameState.turnNumber || 0,
+            gameEnded: this.gameState.gameEnded || false,
+            finalRankings: this.gameState.rankings || []
         };
     }
     
@@ -1423,6 +1504,383 @@ class LispGameEngine {
         });
         
         return playableCards;
+    }
+    
+    /**
+     * Check if player has finished (no cards left)
+     * @param {number} playerId - Player to check
+     * @returns {object} Player finish status
+     */
+    checkPlayerFinished(playerId) {
+        if (!this.gameState || playerId < 0 || playerId >= this.gameState.playerCount) {
+            return { finished: false, cardCount: -1 };
+        }
+        
+        const player = this.gameState.players[playerId];
+        const finished = player.hand.length === 0;
+        
+        return {
+            finished: finished,
+            cardCount: player.hand.length,
+            playerId: playerId,
+            playerName: player.name
+        };
+    }
+    
+    /**
+     * Handle player finishing the game
+     * @param {number} playerId - Player who finished
+     * @returns {object} Finish result
+     */
+    playerFinish(playerId) {
+        if (!this.gameState || this.gameState.gameEnded) {
+            return { success: false, error: 'Game not active' };
+        }
+        
+        const player = this.gameState.players[playerId];
+        if (player.finished) {
+            return { success: false, error: 'Player already finished' };
+        }
+        
+        // Determine rank based on how many players have already finished
+        const finishedCount = this.gameState.players.filter(p => p.finished).length;
+        const rank = finishedCount + 1;
+        
+        // Set player as finished
+        player.finished = true;
+        player.rank = rank;
+        player.finishTime = this.gameState.turnNumber;
+        
+        // Assign social rank
+        const socialRanks = ['Daifugo', 'Fugo', 'Heimin', 'Hinmin'];
+        player.socialRank = socialRanks[rank - 1];
+        
+        // Add to rankings
+        this.gameState.rankings.push({
+            playerId: playerId,
+            rank: rank,
+            socialRank: player.socialRank,
+            finishTime: player.finishTime
+        });
+        
+        // Check if game should end
+        const remainingPlayers = this.gameState.players.filter(p => !p.finished).length;
+        if (remainingPlayers <= 1) {
+            this.endGame();
+        }
+        
+        return {
+            success: true,
+            rank: rank,
+            socialRank: player.socialRank,
+            playerId: playerId,
+            finishTime: player.finishTime
+        };
+    }
+    
+    /**
+     * End the game and assign final rankings
+     */
+    endGame() {
+        if (!this.gameState) return;
+        
+        // Assign last place to remaining player
+        const remainingPlayer = this.gameState.players.find(p => !p.finished);
+        if (remainingPlayer) {
+            remainingPlayer.finished = true;
+            remainingPlayer.rank = 4;
+            remainingPlayer.socialRank = 'Hinmin';
+            remainingPlayer.finishTime = this.gameState.turnNumber;
+            
+            this.gameState.rankings.push({
+                playerId: remainingPlayer.id,
+                rank: 4,
+                socialRank: 'Hinmin',
+                finishTime: remainingPlayer.finishTime
+            });
+        }
+        
+        // Set game as ended
+        this.gameState.gameEnded = true;
+        this.gameState.gamePhase = 'completed';
+        this.gameState.winner = this.gameState.rankings.find(r => r.rank === 1)?.playerId || null;
+        
+        // Sort rankings by rank
+        this.gameState.rankings.sort((a, b) => a.rank - b.rank);
+    }
+    
+    /**
+     * Get current rankings
+     * @returns {object} Current rankings
+     */
+    getCurrentRankings() {
+        if (!this.gameState) {
+            return { players: [] };
+        }
+        
+        const finishedPlayers = this.gameState.players
+            .filter(p => p.finished)
+            .map(p => ({
+                playerId: p.id,
+                name: p.name,
+                rank: p.rank,
+                socialRank: p.socialRank,
+                finishTime: p.finishTime
+            }))
+            .sort((a, b) => a.rank - b.rank);
+        
+        return {
+            players: finishedPlayers,
+            totalFinished: finishedPlayers.length,
+            gameEnded: this.gameState.gameEnded
+        };
+    }
+    
+    /**
+     * Get social rankings (Daifugo system)
+     * @returns {object} Social rankings
+     */
+    getSocialRankings() {
+        if (!this.gameState) {
+            return {};
+        }
+        
+        const rankings = {};
+        this.gameState.players.forEach(player => {
+            if (player.socialRank) {
+                rankings[player.socialRank.toLowerCase()] = player.id;
+            }
+        });
+        
+        return rankings;
+    }
+    
+    /**
+     * Check if game should end
+     * @returns {object} Game end status
+     */
+    checkGameEnd() {
+        if (!this.gameState) {
+            return { gameEnded: false, remainingPlayers: 0 };
+        }
+        
+        const remainingPlayers = this.gameState.players.filter(p => !p.finished).length;
+        const gameEnded = this.gameState.gameEnded || remainingPlayers <= 1;
+        
+        return {
+            gameEnded: gameEnded,
+            remainingPlayers: remainingPlayers,
+            winner: this.gameState.winner,
+            finalRankings: gameEnded ? this.gameState.rankings : null
+        };
+    }
+    
+    /**
+     * Get final rankings
+     * @returns {object} Final rankings
+     */
+    getFinalRankings() {
+        if (!this.gameState) {
+            return { complete: false, players: [] };
+        }
+        
+        return {
+            complete: this.gameState.gameEnded,
+            players: this.gameState.rankings,
+            winner: this.gameState.winner
+        };
+    }
+    
+    /**
+     * Get finish order
+     * @returns {object} Finish order
+     */
+    getFinishOrder() {
+        if (!this.gameState) {
+            return { order: [] };
+        }
+        
+        const order = this.gameState.rankings
+            .sort((a, b) => a.rank - b.rank)
+            .map(r => ({
+                playerId: r.playerId,
+                rank: r.rank,
+                socialRank: r.socialRank,
+                name: this.gameState.players[r.playerId].name
+            }));
+        
+        return { order: order };
+    }
+    
+    /**
+     * Get complete social rankings
+     * @returns {object} Complete social rankings
+     */
+    getCompleteSocialRankings() {
+        if (!this.gameState || !this.gameState.gameEnded) {
+            return {};
+        }
+        
+        const social = {};
+        this.gameState.rankings.forEach(ranking => {
+            const socialKey = ranking.socialRank.toLowerCase();
+            social[socialKey] = ranking.playerId;
+        });
+        
+        return social;
+    }
+    
+    /**
+     * Get ranking statistics
+     * @returns {object} Ranking statistics
+     */
+    getRankingStatistics() {
+        if (!this.gameState) {
+            return { playerStats: [] };
+        }
+        
+        const playerStats = this.gameState.players.map(player => ({
+            playerId: player.id,
+            name: player.name,
+            rank: player.rank,
+            socialRank: player.socialRank,
+            finishTime: player.finishTime,
+            finished: player.finished
+        }));
+        
+        return {
+            playerStats: playerStats,
+            gameComplete: this.gameState.gameEnded,
+            totalTurns: this.gameState.turnNumber
+        };
+    }
+    
+    /**
+     * Validate move after game end
+     * @returns {object} Validation result
+     */
+    validateMoveAfterGameEnd() {
+        if (!this.gameState) {
+            return { valid: false, reason: 'no-game-state' };
+        }
+        
+        if (this.gameState.gameEnded) {
+            return { valid: false, reason: 'game-ended' };
+        }
+        
+        return { valid: true, reason: 'game-active' };
+    }
+    
+    /**
+     * Get game summary
+     * @returns {object} Game summary
+     */
+    getGameSummary() {
+        if (!this.gameState) {
+            return {};
+        }
+        
+        return {
+            winner: this.gameState.winner,
+            rankings: this.gameState.rankings,
+            totalTurns: this.gameState.turnNumber,
+            gameLength: this.gameState.turnNumber,
+            gameEnded: this.gameState.gameEnded,
+            playerCount: this.gameState.playerCount
+        };
+    }
+    
+    /**
+     * Prepare for next round
+     * @returns {object} Next round preparation
+     */
+    prepareNextRound() {
+        if (!this.gameState || !this.gameState.gameEnded) {
+            return { success: false, error: 'Game not completed' };
+        }
+        
+        // Save current round to history
+        this.gameState.roundHistory.push({
+            round: this.gameState.currentRound,
+            rankings: [...this.gameState.rankings],
+            winner: this.gameState.winner
+        });
+        
+        // Prepare next round
+        this.gameState.currentRound++;
+        
+        // Reset player states but keep social ranks
+        this.gameState.players.forEach(player => {
+            const previousSocialRank = player.socialRank;
+            player.hand = [];
+            player.finished = false;
+            player.rank = null;
+            player.finishTime = null;
+            player.passCount = 0;
+            // Keep socialRank for card exchange
+            player.socialRank = previousSocialRank;
+        });
+        
+        // Reset game state
+        this.gameState.gameEnded = false;
+        this.gameState.gamePhase = 'ready';
+        this.gameState.winner = null;
+        this.gameState.rankings = [];
+        this.gameState.turnNumber = 0;
+        this.gameState.consecutivePasses = 0;
+        this.gameState.fieldCards = [];
+        this.gameState.lastPlayedCards = [];
+        
+        return {
+            success: true,
+            rankingsCarriedOver: true,
+            cardExchangeRequired: true,
+            newRound: this.gameState.currentRound
+        };
+    }
+    
+    /**
+     * Get card exchange rules
+     * @returns {object} Card exchange rules
+     */
+    getCardExchangeRules() {
+        return {
+            hinminToDaifugo: 2,  // Hinmin gives 2 best cards to Daifugo
+            heiminToFugo: 1,    // Heimin gives 1 best card to Fugo
+            daifugoToHinmin: 2, // Daifugo gives 2 worst cards to Hinmin
+            fugoToHeimin: 1,    // Fugo gives 1 worst card to Heimin
+            description: 'Lower ranks give best cards, higher ranks give worst cards'
+        };
+    }
+    
+    /**
+     * Get multi-round statistics
+     * @returns {object} Multi-round statistics
+     */
+    getMultiRoundStatistics() {
+        if (!this.gameState) {
+            return { currentRound: 1, roundHistory: [], playerRankHistory: [] };
+        }
+        
+        const playerRankHistory = this.gameState.players.map(player => ({
+            playerId: player.id,
+            name: player.name,
+            currentSocialRank: player.socialRank,
+            roundHistory: this.gameState.roundHistory.map(round => {
+                const playerRank = round.rankings.find(r => r.playerId === player.id);
+                return {
+                    round: round.round,
+                    rank: playerRank?.rank || null,
+                    socialRank: playerRank?.socialRank || null
+                };
+            })
+        }));
+        
+        return {
+            currentRound: this.gameState.currentRound,
+            roundHistory: this.gameState.roundHistory,
+            playerRankHistory: playerRankHistory
+        };
     }
 }
 
