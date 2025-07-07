@@ -184,6 +184,55 @@ class LispGameEngine {
             }
         }
         
+        // Pass/Skip mechanism
+        if (trimmed === '(pass-turn)') {
+            return this.passTurn();
+        }
+        
+        if (trimmed === '(get-consecutive-pass-count)') {
+            return this.getConsecutivePassCount();
+        }
+        
+        if (trimmed === '(check-round-end)') {
+            return this.checkRoundEnd();
+        }
+        
+        if (trimmed === '(start-new-round)') {
+            return this.startNewRound();
+        }
+        
+        if (trimmed === '(get-last-player-to-play)') {
+            return this.getLastPlayerToPlay();
+        }
+        
+        if (trimmed === '(determine-next-round-starter)') {
+            return this.determineNextRoundStarter();
+        }
+        
+        if (trimmed === '(validate-pass-move)') {
+            return this.validatePassMove();
+        }
+        
+        if (trimmed === '(get-pass-statistics)') {
+            return this.getPassStatistics();
+        }
+        
+        if (trimmed === '(get-turn-number)') {
+            return this.getTurnNumber();
+        }
+        
+        if (trimmed.startsWith('(play-cards-and-reset-pass')) {
+            const cardsMatch = trimmed.match(/\[.*\]/);
+            if (cardsMatch) {
+                const cards = JSON.parse(cardsMatch[0]);
+                return this.playCardsAndResetPass(cards);
+            }
+        }
+        
+        if (trimmed === '(get-playable-cards-from-hand)') {
+            return this.getPlayableCardsFromHand();
+        }
+        
         // ゲーム状態初期化
         if (trimmed.startsWith('(init-game-state')) {
             const playerCount = parseInt(trimmed.match(/\d+/)[0]);
@@ -192,12 +241,16 @@ class LispGameEngine {
                 players: Array.from({ length: playerCount }, (_, i) => ({
                     id: i,
                     hand: [],
-                    name: i === 0 ? 'Human' : `CPU${i}`
+                    name: i === 0 ? 'Human' : `CPU${i}`,
+                    passCount: 0
                 })),
                 currentPlayer: 0,
                 fieldCards: [],
                 lastPlayedCards: [],
-                isRevolution: false
+                isRevolution: false,
+                consecutivePasses: 0,
+                lastPlayerToPlay: null,
+                turnNumber: 0
             };
             return { success: true, playerCount: playerCount };
         }
@@ -314,12 +367,15 @@ class LispGameEngine {
             players: this.gameState.players.map(p => ({
                 id: p.id,
                 name: p.name,
-                cardCount: p.hand.length
+                cardCount: p.hand.length,
+                passCount: p.passCount || 0
             })),
             currentPlayer: this.gameState.currentPlayer,
             fieldCards: this.gameState.fieldCards,
             lastPlayedCards: this.gameState.lastPlayedCards,
-            isRevolution: this.gameState.isRevolution
+            isRevolution: this.gameState.isRevolution,
+            consecutivePasses: this.gameState.consecutivePasses || 0,
+            turnNumber: this.gameState.turnNumber || 0
         };
     }
 
@@ -620,7 +676,8 @@ class LispGameEngine {
                 id: i,
                 hand: [],
                 name: i === 0 ? 'Human' : `CPU${i}`,
-                isAI: i !== 0
+                isAI: i !== 0,
+                passCount: 0
             })),
             currentPlayer: 0,
             fieldCards: [],
@@ -629,7 +686,10 @@ class LispGameEngine {
             gamePhase: 'ready',
             turnCount: 0,
             winner: null,
-            deck: []
+            deck: [],
+            consecutivePasses: 0,
+            lastPlayerToPlay: null,
+            turnNumber: 0
         };
         
         return {
@@ -785,13 +845,16 @@ class LispGameEngine {
                 id: p.id,
                 name: p.name,
                 cardCount: p.hand.length,
-                isAI: p.isAI
+                isAI: p.isAI,
+                passCount: p.passCount || 0
             })),
             currentPlayer: this.gameState.currentPlayer,
             fieldCards: this.gameState.fieldCards,
             gamePhase: this.gameState.gamePhase,
             turnCount: this.gameState.turnCount,
-            winner: this.gameState.winner
+            winner: this.gameState.winner,
+            consecutivePasses: this.gameState.consecutivePasses || 0,
+            turnNumber: this.gameState.turnNumber || 0
         };
     }
     
@@ -1133,6 +1196,233 @@ class LispGameEngine {
                 reason: `Cards are weaker than field cards (${newCardValue} < ${fieldCardValue})` 
             };
         }
+    }
+    
+    /**
+     * Pass turn functionality
+     * @returns {object} Pass result
+     */
+    passTurn() {
+        if (!this.gameState) {
+            return { success: false, error: 'Game state not initialized' };
+        }
+        
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
+        currentPlayer.passCount++;
+        this.gameState.consecutivePasses++;
+        this.gameState.turnNumber++;
+        
+        // Advance to next player
+        this.gameState.currentPlayer = (this.gameState.currentPlayer + 1) % this.gameState.playerCount;
+        
+        return {
+            success: true,
+            action: 'pass',
+            playerId: currentPlayer.id,
+            consecutivePasses: this.gameState.consecutivePasses
+        };
+    }
+    
+    /**
+     * Get consecutive pass count
+     * @returns {object} Pass count info
+     */
+    getConsecutivePassCount() {
+        if (!this.gameState) {
+            return { count: 0 };
+        }
+        
+        return {
+            count: this.gameState.consecutivePasses,
+            playerCount: this.gameState.playerCount
+        };
+    }
+    
+    /**
+     * Check if round should end (all players passed)
+     * @returns {object} Round end status
+     */
+    checkRoundEnd() {
+        if (!this.gameState) {
+            return { roundEnded: false };
+        }
+        
+        const allPlayersPassedInSequence = this.gameState.consecutivePasses >= this.gameState.playerCount;
+        
+        return {
+            roundEnded: allPlayersPassedInSequence,
+            reason: allPlayersPassedInSequence ? 'all-passed' : 'game-continues',
+            consecutivePasses: this.gameState.consecutivePasses
+        };
+    }
+    
+    /**
+     * Start new round after all players pass
+     * @returns {object} New round result
+     */
+    startNewRound() {
+        if (!this.gameState) {
+            return { success: false, error: 'Game state not initialized' };
+        }
+        
+        // Clear field and reset consecutive passes
+        this.gameState.fieldCards = [];
+        this.gameState.lastPlayedCards = [];
+        this.gameState.consecutivePasses = 0;
+        
+        // Set current player to last player who played cards (if any)
+        if (this.gameState.lastPlayerToPlay !== null) {
+            this.gameState.currentPlayer = this.gameState.lastPlayerToPlay;
+        }
+        
+        return {
+            success: true,
+            fieldCleared: true,
+            consecutivePassReset: true,
+            newStarter: this.gameState.currentPlayer
+        };
+    }
+    
+    /**
+     * Get last player to play cards
+     * @returns {object} Last player info
+     */
+    getLastPlayerToPlay() {
+        if (!this.gameState) {
+            return { id: 0 };
+        }
+        
+        return {
+            id: this.gameState.lastPlayerToPlay !== null ? this.gameState.lastPlayerToPlay : 0
+        };
+    }
+    
+    /**
+     * Determine who starts next round
+     * @returns {object} Next round starter
+     */
+    determineNextRoundStarter() {
+        if (!this.gameState) {
+            return { starterId: 0 };
+        }
+        
+        // If someone played cards, they start next round
+        if (this.gameState.lastPlayerToPlay !== null) {
+            return { starterId: this.gameState.lastPlayerToPlay };
+        }
+        
+        // Otherwise, first player starts
+        return { starterId: 0 };
+    }
+    
+    /**
+     * Validate pass move (always legal)
+     * @returns {object} Validation result
+     */
+    validatePassMove() {
+        return {
+            valid: true,
+            reason: 'pass-always-legal'
+        };
+    }
+    
+    /**
+     * Get pass statistics
+     * @returns {object} Pass statistics
+     */
+    getPassStatistics() {
+        if (!this.gameState) {
+            return {
+                playerPassCounts: [0, 0, 0, 0],
+                totalPasses: 0,
+                consecutivePasses: 0
+            };
+        }
+        
+        const playerPassCounts = this.gameState.players.map(p => p.passCount);
+        const totalPasses = playerPassCounts.reduce((sum, count) => sum + count, 0);
+        
+        return {
+            playerPassCounts: playerPassCounts,
+            totalPasses: totalPasses,
+            consecutivePasses: this.gameState.consecutivePasses
+        };
+    }
+    
+    /**
+     * Get current turn number
+     * @returns {number} Turn number
+     */
+    getTurnNumber() {
+        if (!this.gameState) {
+            return 0;
+        }
+        
+        return this.gameState.turnNumber;
+    }
+    
+    /**
+     * Play cards and reset pass count
+     * @param {Array} cards - Cards to play
+     * @returns {object} Play result
+     */
+    playCardsAndResetPass(cards) {
+        if (!this.gameState) {
+            return { success: false, error: 'Game state not initialized' };
+        }
+        
+        // Basic validation
+        if (!cards || cards.length === 0) {
+            return { success: false, error: 'No cards provided' };
+        }
+        
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
+        
+        // Reset pass count for current player
+        currentPlayer.passCount = 0;
+        
+        // Reset consecutive passes
+        this.gameState.consecutivePasses = 0;
+        
+        // Set last player to play
+        this.gameState.lastPlayerToPlay = this.gameState.currentPlayer;
+        
+        // Update field cards
+        this.gameState.fieldCards = cards;
+        this.gameState.lastPlayedCards = cards;
+        
+        return {
+            success: true,
+            passReset: true,
+            cardsPlayed: cards,
+            playerId: currentPlayer.id
+        };
+    }
+    
+    /**
+     * Get playable cards from current player's hand
+     * @returns {Array} Playable cards
+     */
+    getPlayableCardsFromHand() {
+        if (!this.gameState) {
+            return [];
+        }
+        
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
+        const playerHand = currentPlayer.hand;
+        
+        // If field is empty, all cards are playable
+        if (!this.gameState.fieldCards || this.gameState.fieldCards.length === 0) {
+            return playerHand;
+        }
+        
+        // Find cards that can beat current field
+        const playableCards = playerHand.filter(card => {
+            const canPlay = this.canPlayOnField([card], this.gameState.fieldCards);
+            return canPlay.canPlay;
+        });
+        
+        return playableCards;
     }
 }
 
