@@ -149,16 +149,7 @@ class LispGameEngine {
             return this.getEngineCapabilities();
         }
         
-        // Card strength comparison
-        if (trimmed.startsWith('(compare-card-strength')) {
-            const match = trimmed.match(/\(compare-card-strength (\{.*?\}) (\{.*?\})(?: (true|false))?\)/);
-            if (match) {
-                const card1 = JSON.parse(match[1]);
-                const card2 = JSON.parse(match[2]);
-                const revolution = match[3] === 'true';
-                return this.compareCardStrength(card1, card2, revolution);
-            }
-        }
+        
         
         // Can play on field validation
         if (trimmed.startsWith('(can-play-on-field')) {
@@ -503,10 +494,47 @@ class LispGameEngine {
         }
         
         if (trimmed.startsWith('(play-cards')) {
-            const cardsMatch = trimmed.match(/\[.*\]/);
+            const cardsMatch = trimmed.match(/[\[.*\]]/);
             if (cardsMatch) {
                 const cards = JSON.parse(cardsMatch[0]);
                 return this.playCards(cards);
+            }
+        }
+
+        // --- Test Setup Functions ---
+        if (trimmed.startsWith('(set-current-player')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            if (this.gameState) this.gameState.currentPlayer = playerId;
+            return { success: true };
+        }
+
+        if (trimmed.startsWith('(set-field-cards')) {
+            const cardsMatch = trimmed.match(/\(set-field-cards (.*)\)/);
+            if (cardsMatch) {
+                // JSON.parseは文字列リテラルを期待するため、シングルクォートをダブルクォートに変換
+                const jsonString = cardsMatch[1].replace(/'/g, '"');
+                const cards = JSON.parse(jsonString);
+                if (this.gameState) this.gameState.fieldCards = cards;
+                return { success: true };
+            }
+        }
+
+        if (trimmed.startsWith('(process-play')) {
+            const playMatch = trimmed.match(/\(process-play (.*)\)/);
+            if (playMatch) {
+                // JSON.parseは文字列リテラルを期待するため、シングルクォートをダブルクォートに変換
+                const jsonString = playMatch[1].replace(/'/g, '"');
+                const play = JSON.parse(jsonString);
+                if (play.action === 'pass') {
+                    this.passTurn();
+                } else {
+                    this.playCardsAndResetPass(play.cards);
+                }
+                // Check if round ends
+                if (this.gameState.consecutivePasses >= this.gameState.playerCount - 1) {
+                    this.startNewRound();
+                }
+                return { success: true };
             }
         }
         
@@ -578,17 +606,25 @@ class LispGameEngine {
         if (!cards || cards.length === 0) {
             return { valid: false, reason: 'No cards selected' };
         }
-        
+
+        // 8切りチェック（優先度1 - 最高）
+        const has8 = cards.some(card => card.rank === '8');
+        if (has8 && cards.length === 1) {
+            return { valid: true, reason: '8切り！', special: '8cut' };
+        }
+
         // Q-bomberチェック（優先度2）
         const qBomberResult = this.detectQBomber(cards);
         if (qBomberResult.detected) {
             return { valid: true, reason: '💣 Qボンバー！', special: 'q-bomber' };
         }
-        
-        // 8切りチェック（優先度1 - 最高）
-        const has8 = cards.some(card => card.rank === '8');
-        if (has8 && cards.length === 1) {
-            return { valid: true, reason: '8切り！', special: '8cut' };
+
+        // 基本的なプレイバリデーション
+        const fieldCards = this.gameState ? this.gameState.fieldCards : [];
+        const canPlayResult = this.canPlayOnField(cards, fieldCards);
+
+        if (!canPlayResult.canPlay) {
+            return { valid: false, reason: canPlayResult.reason };
         }
         
         return { valid: true, reason: 'Valid play' };
@@ -1362,15 +1398,15 @@ class LispGameEngine {
         const newCardValue = this.getCardRankValue(newCards[0], revolution);
         const fieldCardValue = this.getCardRankValue(fieldCards[0], revolution);
         
-        if (newCardValue >= fieldCardValue) {
+        if (newCardValue > fieldCardValue) {
             return { 
                 canPlay: true, 
-                reason: `Cards are stronger or equal to field cards (${newCardValue} >= ${fieldCardValue})` 
+                reason: `Cards are stronger than field cards (${newCardValue} > ${fieldCardValue})` 
             };
         } else {
             return { 
                 canPlay: false, 
-                reason: `Cards are weaker than field cards (${newCardValue} < ${fieldCardValue})` 
+                reason: `Cards are weaker or equal to field cards (${newCardValue} <= ${fieldCardValue})` 
             };
         }
     }
