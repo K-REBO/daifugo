@@ -1,16 +1,4 @@
-class Symbol {
-  constructor(name) {
-    this.name = name;
-  }
-  
-  toString() {
-    return this.name;
-  }
-}
-
-function sym(name) {
-  return new Symbol(name);
-}
+const { Symbol, sym } = require('./symbol');
 
 class Environment {
   constructor(parent = null) {
@@ -132,6 +120,251 @@ function createEnvironment() {
   // Mathematical modulo operation
   env.define('%', (a, b) => a % b);
 
+  // File system operations for loading Lisp files
+  env.define('load', (filename) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const fullPath = path.resolve(__dirname, filename);
+      const content = fs.readFileSync(fullPath, 'utf8');
+      
+      // Parse and evaluate the entire file
+      const { parse } = require('./parser');
+      const expressions = parseMultipleExpressions(content);
+      
+      let result = null;
+      expressions.forEach(expr => {
+        result = evaluate(expr, env);
+      });
+      
+      return result;
+    } catch (error) {
+      console.error(`Error loading ${filename}:`, error.message);
+      return null;
+    }
+  });
+
+  // Helper function to parse multiple expressions from file
+  function parseMultipleExpressions(content) {
+    const expressions = [];
+    
+    // Split content into lines and process each expression
+    const lines = content.split('\n');
+    let currentExpr = '';
+    let parenCount = 0;
+    let inString = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines and comments
+      if (line === '' || line.startsWith(';')) {
+        continue;
+      }
+      
+      // Add line to current expression
+      if (currentExpr) {
+        currentExpr += ' ' + line;
+      } else {
+        currentExpr = line;
+      }
+      
+      // Count parentheses to determine if expression is complete
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (!inString) {
+          if (char === '(') parenCount++;
+          else if (char === ')') parenCount--;
+          else if (char === '"') inString = true;
+        } else {
+          if (char === '"' && line[j-1] !== '\\') inString = false;
+        }
+      }
+      
+      // If parentheses are balanced, parse the expression
+      if (parenCount === 0 && !inString && currentExpr) {
+        try {
+          const { parse } = require('./parser');
+          const expr = parse(currentExpr);
+          expressions.push(expr);
+        } catch (e) {
+          console.error('Parse error:', e.message, 'in:', currentExpr.substring(0, 100) + '...');
+        }
+        currentExpr = '';
+      }
+    }
+    
+    return expressions;
+  }
+
+  // Additional Lisp primitives needed for game logic
+  env.define('setq', (name, value) => {
+    const varName = name instanceof Symbol ? name.name : name;
+    env.define(varName, evaluate(value, env));
+    return evaluate(value, env);
+  });
+
+  env.define('defun', (name, params, ...rest) => {
+    const funcName = name instanceof Symbol ? name.name : name;
+    // Handle optional docstring
+    let body;
+    if (rest.length === 1) {
+      body = rest[0];
+    } else if (rest.length === 2 && typeof rest[0] === 'string') {
+      body = rest[1]; // Skip docstring
+    } else {
+      body = rest[rest.length - 1]; // Last element is body
+    }
+    
+    const func = (...args) => {
+      const newEnv = env.extend();
+      params.forEach((param, i) => {
+        const paramName = param instanceof Symbol ? param.name : param;
+        newEnv.define(paramName, args[i]);
+      });
+      return evaluate(body, newEnv);
+    };
+    env.define(funcName, func);
+    return func;
+  });
+
+  env.define('cond', (...clauses) => {
+    for (const clause of clauses) {
+      const [condition, ...body] = clause;
+      if (evaluate(condition, env)) {
+        let result = null;
+        body.forEach(expr => {
+          result = evaluate(expr, env);
+        });
+        return result;
+      }
+    }
+    return null;
+  });
+
+  env.define('let', (bindings, body) => {
+    const newEnv = env.extend();
+    bindings.forEach(([name, value]) => {
+      const varName = name instanceof Symbol ? name.name : name;
+      newEnv.define(varName, evaluate(value, env));
+    });
+    return evaluate(body, newEnv);
+  });
+
+  env.define('cons', (a, b) => {
+    if (Array.isArray(b)) {
+      return [a, ...b];
+    } else {
+      return [a, b];
+    }
+  });
+
+  env.define('car', (lst) => {
+    if (Array.isArray(lst) && lst.length > 0) {
+      return lst[0];
+    }
+    return null;
+  });
+
+  env.define('cdr', (lst) => {
+    if (Array.isArray(lst) && lst.length > 0) {
+      return lst.slice(1);
+    }
+    return null;
+  });
+
+  env.define('reverse', (lst) => {
+    if (Array.isArray(lst)) {
+      return [...lst].reverse();
+    }
+    return lst;
+  });
+
+  env.define('gensym', () => {
+    return Symbol('G' + Math.floor(Math.random() * 10000));
+  });
+
+  env.define('symbol-name', (sym) => {
+    if (sym instanceof Symbol) {
+      return sym.name;
+    }
+    return String(sym);
+  });
+
+  // Additional Lisp primitives needed for .lisp files
+  env.define('error', (message) => {
+    throw new Error(message);
+  });
+
+  env.define('member', (item, list) => {
+    if (!Array.isArray(list)) return false;
+    return list.includes(item);
+  });
+
+  env.define('mod', (a, b) => a % b);
+
+  env.define('floor', (x) => Math.floor(x));
+
+  env.define('setf', (place, value) => {
+    // Simplified setf implementation
+    const varName = place instanceof Symbol ? place.name : place;
+    env.define(varName, value);
+    return value;
+  });
+
+  env.define('hash-code', (obj) => {
+    // Simple hash code implementation
+    return String(obj).length;
+  });
+
+  env.define('random', (n) => {
+    return Math.floor(Math.random() * n);
+  });
+
+  env.define('list', (...args) => {
+    return args;
+  });
+
+  env.define('eq', (a, b) => a === b);
+
+  env.define('null', (obj) => obj === null || obj === undefined);
+
+  env.define('abs', (x) => Math.abs(x));
+
+  env.define('truncate', (x) => Math.trunc(x));
+
+  env.define('do', (varClause, endClause, ...body) => {
+    // Simplified do loop implementation
+    const newEnv = env.extend();
+    
+    // Initialize variables
+    varClause.forEach(([name, init, step]) => {
+      const varName = name instanceof Symbol ? name.name : name;
+      newEnv.define(varName, evaluate(init, newEnv));
+    });
+    
+    // Loop until end condition
+    while (!evaluate(endClause[0], newEnv)) {
+      // Execute body
+      body.forEach(expr => evaluate(expr, newEnv));
+      
+      // Update variables
+      varClause.forEach(([name, init, step]) => {
+        if (step) {
+          const varName = name instanceof Symbol ? name.name : name;
+          newEnv.define(varName, evaluate(step, newEnv));
+        }
+      });
+    }
+    
+    // Return end clause result
+    let result = null;
+    endClause.slice(1).forEach(expr => {
+      result = evaluate(expr, newEnv);
+    });
+    return result;
+  });
+
   // Phase 7.2: Card operations (Refactored)
   
   // Constants for card validation (shared across functions)
@@ -193,6 +426,24 @@ function createEnvironment() {
 
   env.define('create-joker', () => {
     return Object.freeze({ suit: null, rank: 'JOKER' });
+  });
+
+  // Game State Management Functions
+  env.define('init-game-state', (playerCount) => {
+    return ["game-state", playerCount, 0, null];
+  });
+
+  env.define('update-game-state', (state, action) => {
+    if (action.type === "next-player") {
+      const playerCount = state[1];
+      const currentPlayer = state[2];
+      const fieldCards = state[3];
+      const nextPlayer = (currentPlayer + 1) % playerCount;
+      return ["game-state", playerCount, nextPlayer, fieldCards];
+    } else if (action.type === "set-field") {
+      return ["game-state", state[1], state[2], action.cards];
+    }
+    return state;
   });
 
   env.define('card-suit', (card) => {
@@ -529,7 +780,17 @@ function evaluate(expr, env) {
     }
     
     if ((first instanceof Symbol && first.name === 'defun') || first === 'defun') {
-      const [, name, params, body] = expr;
+      const [, name, params, ...rest] = expr;
+      // Handle optional docstring: if first rest element is string, skip it
+      let body;
+      if (rest.length === 1) {
+        body = rest[0];
+      } else if (rest.length === 2 && typeof rest[0] === 'string') {
+        body = rest[1]; // Skip docstring
+      } else {
+        body = rest[rest.length - 1]; // Last element is body
+      }
+      
       const func = (...args) => {
         const newEnv = env.extend();
         params.forEach((param, i) => {
@@ -541,6 +802,21 @@ function evaluate(expr, env) {
       const funcName = name instanceof Symbol ? name.name : name;
       env.define(funcName, func);
       return func;
+    }
+    
+    if ((first instanceof Symbol && first.name === 'cond') || first === 'cond') {
+      const [, ...clauses] = expr;
+      for (const clause of clauses) {
+        const [condition, ...body] = clause;
+        if (evaluate(condition, env)) {
+          let result = null;
+          body.forEach(expr => {
+            result = evaluate(expr, env);
+          });
+          return result;
+        }
+      }
+      return null;
     }
     
     if ((first instanceof Symbol && first.name === 'defrule') || first === 'defrule') {
