@@ -1036,18 +1036,26 @@ function createEnvironment() {
     });
   });
 
-  // Phase 7.8: Special Rules Engine Integration - Comprehensive and optimized
+  // Phase 7.8: Special Rules Engine Integration - Comprehensive and optimized with enhanced priority management
 
-  // Rule registry for dynamic rule management
+  // Rule registry for dynamic rule management with enhanced structure
   const ruleRegistry = new Map();
+  const ruleCache = new Map(); // Cache for performance optimization
 
-  // Pre-defined special rules with priority ordering
+  // Pre-defined special rules with priority ordering (lower number = higher priority)
   const SPECIAL_RULES = Object.freeze({
-    EIGHT_CUT: { name: 'eight-cut', priority: 1 },
-    REVOLUTION: { name: 'revolution', priority: 2 },
-    JOKER: { name: 'joker', priority: 3 },
-    ELEVEN_BACK: { name: 'eleven-back', priority: 4 }
+    EIGHT_CUT: { name: 'eight-cut', priority: 1, category: 'immediate' },
+    REVOLUTION: { name: 'revolution', priority: 2, category: 'game-changing' },
+    JOKER: { name: 'joker', priority: 3, category: 'wild' },
+    ELEVEN_BACK: { name: 'eleven-back', priority: 4, category: 'turn-modifier' }
   });
+
+  // Rule application statistics for optimization
+  const ruleStats = {
+    applicationsCount: 0,
+    ruleHitCounts: new Map(),
+    lastOptimizedAt: Date.now()
+  };
 
   // Helper function to get card rank from different formats
   const getCardRank = (card) => {
@@ -1109,6 +1117,57 @@ function createEnvironment() {
     });
   };
 
+  // Optimized rule checking with caching and priority sorting
+  const checkRulesOptimized = (cards, gameState) => {
+    // Generate cache key for rule checking
+    const cacheKey = JSON.stringify(cards.map(getCardRank)) + gameState[4]?.isRevolution;
+    
+    // Check cache first
+    if (ruleCache.has(cacheKey)) {
+      console.debug('apply-special-rules: using cached rule result');
+      return ruleCache.get(cacheKey);
+    }
+
+    const appliedRules = [];
+    
+    // Check built-in rules in priority order
+    const builtInChecks = [
+      { name: 'eight-cut', checker: hasEightCard, priority: 1 },
+      { name: 'revolution', checker: hasRevolution, priority: 2 },
+      { name: 'joker', checker: hasJoker, priority: 3 },
+      { name: 'eleven-back', checker: hasElevenBack, priority: 4 }
+    ];
+
+    // Sort by priority and check rules
+    builtInChecks.sort((a, b) => a.priority - b.priority);
+    
+    for (const { name, checker } of builtInChecks) {
+      if (checker(cards)) {
+        appliedRules.push(name);
+        // Update statistics
+        ruleStats.ruleHitCounts.set(name, (ruleStats.ruleHitCounts.get(name) || 0) + 1);
+      }
+    }
+
+    // Check custom rules (sorted by priority)
+    const customRules = Array.from(ruleRegistry.entries())
+      .sort((a, b) => (a[1].priority || 999) - (b[1].priority || 999));
+    
+    for (const [ruleName, rule] of customRules) {
+      if (rule.condition && rule.condition(cards, gameState)) {
+        appliedRules.push(ruleName);
+        ruleStats.ruleHitCounts.set(ruleName, (ruleStats.ruleHitCounts.get(ruleName) || 0) + 1);
+      }
+    }
+
+    // Cache result (with TTL-like behavior)
+    if (ruleCache.size < 100) { // Prevent memory bloat
+      ruleCache.set(cacheKey, appliedRules);
+    }
+
+    return appliedRules;
+  };
+
   env.define('apply-special-rules', (cards, gameState) => {
     return atomicHandOperation('apply-special-rules', () => {
       if (!Array.isArray(cards)) {
@@ -1118,84 +1177,72 @@ function createEnvironment() {
       
       console.debug(`apply-special-rules: analyzing ${cards.length} cards for special rules`);
       
-      const rulesApplied = [];
+      // Update statistics
+      ruleStats.applicationsCount++;
+      
+      // Use optimized rule checking
+      const rulesApplied = checkRulesOptimized(cards, gameState);
+      
       const effects = {
-        ruleApplied: null,
-        rulesApplied: [],
+        ruleApplied: rulesApplied[0] || null, // Highest priority rule
+        rulesApplied: rulesApplied,
         fieldCleared: false,
         nextPlayerGetsControl: false,
         cardOrderReversed: false,
         canPlayOnAnything: false,
         skipNextPlayer: false,
-        conflictsResolved: false,
+        conflictsResolved: rulesApplied.length > 0,
         newGameState: gameState
       };
 
-      // Check for eight-cut (highest priority)
-      if (hasEightCard(cards)) {
-        console.debug('apply-special-rules: eight-cut rule detected');
-        effects.ruleApplied = 'eight-cut';
-        effects.rulesApplied.push('eight-cut');
-        effects.fieldCleared = true;
-        effects.nextPlayerGetsControl = true;
+      // Apply effects based on rules (optimized with early returns)
+      let currentGameState = gameState;
+
+      // Apply effects in priority order
+      for (const ruleName of rulesApplied) {
+        console.debug(`apply-special-rules: ${ruleName} rule detected`);
         
-        // Update game state to clear field
-        effects.newGameState = evaluate([sym('update-game-state'), [sym('quote'), gameState], [sym('quote'), { type: 'reset-field' }]], env);
-      }
-
-      // Check for revolution
-      if (hasRevolution(cards)) {
-        console.debug('apply-special-rules: revolution rule detected');
-        if (!effects.ruleApplied) effects.ruleApplied = 'revolution';
-        effects.rulesApplied.push('revolution');
-        effects.cardOrderReversed = true;
-        
-        // Update game state with revolution flag
-        const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = effects.newGameState;
-        const newGameData = {
-          ...gameData,
-          isRevolution: !(gameData?.isRevolution || false) // Toggle revolution state
-        };
-        effects.newGameState = Object.freeze([gameStateType, playerCount, currentPlayer, fieldCards, newGameData]);
-      }
-
-      // Check for joker
-      if (hasJoker(cards)) {
-        console.debug('apply-special-rules: joker rule detected');
-        if (!effects.ruleApplied) effects.ruleApplied = 'joker';
-        effects.rulesApplied.push('joker');
-        effects.canPlayOnAnything = true;
-      }
-
-      // Check for eleven-back (Jack)
-      if (hasElevenBack(cards)) {
-        console.debug('apply-special-rules: eleven-back rule detected');
-        if (!effects.ruleApplied) effects.ruleApplied = 'eleven-back';
-        effects.rulesApplied.push('eleven-back');
-        effects.skipNextPlayer = true;
-      }
-
-      // Apply custom rules from registry
-      for (const [ruleName, rule] of ruleRegistry.entries()) {
-        if (rule.condition && rule.condition(cards, gameState)) {
-          console.debug(`apply-special-rules: custom rule '${ruleName}' detected`);
-          if (!effects.ruleApplied) effects.ruleApplied = ruleName;
-          effects.rulesApplied.push(ruleName);
-          
-          // Apply rule effects
-          if (rule.effect) {
-            Object.assign(effects, rule.effect);
-          }
+        switch (ruleName) {
+          case 'eight-cut':
+            effects.fieldCleared = true;
+            effects.nextPlayerGetsControl = true;
+            currentGameState = evaluate([sym('update-game-state'), [sym('quote'), currentGameState], [sym('quote'), { type: 'reset-field' }]], env);
+            break;
+            
+          case 'revolution':
+            effects.cardOrderReversed = true;
+            const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = currentGameState;
+            const newGameData = {
+              ...gameData,
+              isRevolution: !(gameData?.isRevolution || false)
+            };
+            currentGameState = Object.freeze([gameStateType, playerCount, currentPlayer, fieldCards, newGameData]);
+            break;
+            
+          case 'joker':
+            effects.canPlayOnAnything = true;
+            break;
+            
+          case 'eleven-back':
+            effects.skipNextPlayer = true;
+            break;
+            
+          default:
+            // Handle custom rules
+            const customRule = ruleRegistry.get(ruleName);
+            if (customRule?.effect) {
+              Object.assign(effects, customRule.effect);
+            }
         }
       }
 
-      // Mark conflicts as resolved if any rules applied (even single rule is a resolution)
-      if (effects.rulesApplied.length > 0) {
-        effects.conflictsResolved = true;
-        console.debug(`apply-special-rules: resolved ${effects.rulesApplied.length} rule conflicts`);
+      effects.newGameState = currentGameState;
+
+      if (effects.conflictsResolved) {
+        console.debug(`apply-special-rules: resolved ${rulesApplied.length} rule conflicts`);
       }
 
-      console.debug(`apply-special-rules: applied rules: ${effects.rulesApplied.join(', ')}`);
+      console.debug(`apply-special-rules: applied rules: ${rulesApplied.join(', ')}`);
       return effects;
     });
   });
@@ -1204,10 +1251,22 @@ function createEnvironment() {
     return atomicHandOperation('load-special-rules', () => {
       console.debug(`load-special-rules: attempting to load rules from ${filename}`);
       
+      const startTime = Date.now();
+      
       try {
+        // Clear cache when loading new rules
+        ruleCache.clear();
+        console.debug('load-special-rules: cleared rule cache for fresh rules');
+        
         // Try to load the file using existing load function
         const loadResult = evaluate([sym('load'), filename], env);
-        console.debug(`load-special-rules: successfully loaded ${filename}`);
+        
+        const loadTime = Date.now() - startTime;
+        console.debug(`load-special-rules: successfully loaded ${filename} in ${loadTime}ms`);
+        
+        // Update optimization timestamp
+        ruleStats.lastOptimizedAt = Date.now();
+        
         return true;
       } catch (error) {
         console.warn(`load-special-rules: could not load ${filename} - ${error.message}`);
@@ -1228,15 +1287,30 @@ function createEnvironment() {
       
       console.debug(`register-custom-rule: registering rule '${rule.name}'`);
       
-      // Store rule in registry
-      ruleRegistry.set(rule.name, {
+      // Enhanced rule registration with validation
+      const enhancedRule = {
         name: rule.name,
         condition: rule.condition || (() => false),
         effect: rule.effect || {},
-        priority: rule.priority || 999
-      });
+        priority: rule.priority || 999,
+        category: rule.category || 'custom',
+        registeredAt: Date.now(),
+        usageCount: 0
+      };
       
-      console.debug(`register-custom-rule: rule '${rule.name}' registered successfully`);
+      // Check for rule conflicts
+      if (ruleRegistry.has(rule.name)) {
+        console.warn(`register-custom-rule: overriding existing rule '${rule.name}'`);
+      }
+      
+      // Store rule in registry
+      ruleRegistry.set(rule.name, enhancedRule);
+      
+      // Clear cache when new rules are registered
+      ruleCache.clear();
+      console.debug('register-custom-rule: cleared rule cache for new rule');
+      
+      console.debug(`register-custom-rule: rule '${rule.name}' registered successfully with priority ${enhancedRule.priority}`);
       return true;
     });
   });
@@ -1284,6 +1358,129 @@ function createEnvironment() {
     const builtInRules = Object.values(SPECIAL_RULES).map(rule => rule.name);
     const customRules = Array.from(ruleRegistry.keys());
     return [...builtInRules, ...customRules];
+  });
+
+  // Performance monitoring and debugging functions
+  env.define('get-rule-statistics', () => {
+    return {
+      totalApplications: ruleStats.applicationsCount,
+      ruleHitCounts: Object.fromEntries(ruleStats.ruleHitCounts),
+      cacheSize: ruleCache.size,
+      registeredCustomRules: ruleRegistry.size,
+      lastOptimizedAt: new Date(ruleStats.lastOptimizedAt).toISOString(),
+      mostUsedRule: ruleStats.ruleHitCounts.size > 0 ? 
+        Array.from(ruleStats.ruleHitCounts.entries())
+          .sort((a, b) => b[1] - a[1])[0][0] : null
+    };
+  });
+
+  env.define('clear-rule-cache', () => {
+    const previousSize = ruleCache.size;
+    ruleCache.clear();
+    console.debug(`clear-rule-cache: cleared ${previousSize} cached entries`);
+    return { clearedEntries: previousSize };
+  });
+
+  env.define('optimize-rule-engine', () => {
+    return atomicHandOperation('optimize-rule-engine', () => {
+      const startTime = Date.now();
+      
+      // Clear cache
+      const clearedEntries = ruleCache.size;
+      ruleCache.clear();
+      
+      // Reset statistics
+      const oldStats = { ...ruleStats };
+      ruleStats.applicationsCount = 0;
+      ruleStats.ruleHitCounts.clear();
+      ruleStats.lastOptimizedAt = Date.now();
+      
+      const optimizationTime = Date.now() - startTime;
+      
+      console.debug(`optimize-rule-engine: optimization completed in ${optimizationTime}ms`);
+      
+      return {
+        optimizationTime,
+        clearedCacheEntries: clearedEntries,
+        previousStats: oldStats,
+        timestamp: new Date().toISOString()
+      };
+    });
+  });
+
+  env.define('debug-rule-application', (cards, gameState) => {
+    return atomicHandOperation('debug-rule-application', () => {
+      if (!Array.isArray(cards)) {
+        throw new Error('debug-rule-application: cards must be an array');
+      }
+      validateGameState(gameState, 'debug-rule-application');
+      
+      const debugInfo = {
+        cardRanks: cards.map(getCardRank),
+        gameState: {
+          playerCount: gameState[1],
+          currentPlayer: gameState[2],
+          hasFieldCards: gameState[3] !== null,
+          isRevolution: gameState[4]?.isRevolution || false
+        },
+        ruleChecks: [],
+        appliedRules: [],
+        performance: {}
+      };
+      
+      const startTime = Date.now();
+      
+      // Debug each rule check
+      const builtInChecks = [
+        { name: 'eight-cut', checker: hasEightCard },
+        { name: 'revolution', checker: hasRevolution },
+        { name: 'joker', checker: hasJoker },
+        { name: 'eleven-back', checker: hasElevenBack }
+      ];
+      
+      for (const { name, checker } of builtInChecks) {
+        const checkStart = Date.now();
+        const result = checker(cards);
+        const checkTime = Date.now() - checkStart;
+        
+        debugInfo.ruleChecks.push({
+          ruleName: name,
+          result,
+          checkTime,
+          category: 'built-in'
+        });
+        
+        if (result) {
+          debugInfo.appliedRules.push(name);
+        }
+      }
+      
+      // Debug custom rules
+      for (const [ruleName, rule] of ruleRegistry.entries()) {
+        const checkStart = Date.now();
+        const result = rule.condition ? rule.condition(cards, gameState) : false;
+        const checkTime = Date.now() - checkStart;
+        
+        debugInfo.ruleChecks.push({
+          ruleName,
+          result,
+          checkTime,
+          category: 'custom',
+          priority: rule.priority
+        });
+        
+        if (result) {
+          debugInfo.appliedRules.push(ruleName);
+        }
+      }
+      
+      debugInfo.performance = {
+        totalTime: Date.now() - startTime,
+        cacheHit: ruleCache.has(JSON.stringify(cards.map(getCardRank)) + gameState[4]?.isRevolution)
+      };
+      
+      return debugInfo;
+    });
   });
   
   return env;
