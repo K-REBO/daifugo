@@ -71,6 +71,66 @@ function createEnvironment() {
     }
     return null;
   });
+
+  // Phase 7.1: Enhanced list operations (Refactored)
+  const applyFunction = (fn, args, env) => {
+    if (typeof fn === 'function') {
+      return fn(...args);
+    } else {
+      return evaluate([fn, ...args], env);
+    }
+  };
+
+  env.define('map', (fn, list) => {
+    if (!Array.isArray(list)) {
+      throw new Error('map: second argument must be a list');
+    }
+    return list.map(item => applyFunction(fn, [item], env));
+  });
+
+  env.define('filter', (fn, list) => {
+    if (!Array.isArray(list)) {
+      throw new Error('filter: second argument must be a list');
+    }
+    return list.filter(item => applyFunction(fn, [item], env));
+  });
+
+  env.define('reduce', (fn, initial, list) => {
+    if (!Array.isArray(list)) {
+      throw new Error('reduce: third argument must be a list');
+    }
+    return list.reduce((acc, item) => applyFunction(fn, [acc, item], env), initial);
+  });
+
+  env.define('length', (list) => {
+    if (!Array.isArray(list)) {
+      throw new Error('length: argument must be a list');
+    }
+    return list.length;
+  });
+
+  env.define('nth', (index, list) => {
+    if (!Array.isArray(list)) {
+      throw new Error('nth: second argument must be a list');
+    }
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error('nth: first argument must be a non-negative number');
+    }
+    return index < list.length ? list[index] : null;
+  });
+
+  env.define('append', (list1, list2) => {
+    if (!Array.isArray(list1)) {
+      throw new Error('append: first argument must be a list');
+    }
+    if (!Array.isArray(list2)) {
+      throw new Error('append: second argument must be a list');
+    }
+    return [...list1, ...list2];
+  });
+
+  // Mathematical modulo operation
+  env.define('%', (a, b) => a % b);
   
   return env;
 }
@@ -109,6 +169,10 @@ function evaluate(expr, env) {
       const [, condition, thenExpr, elseExpr] = expr;
       const conditionValue = evaluate(condition, env);
       return conditionValue ? evaluate(thenExpr, env) : evaluate(elseExpr, env);
+    }
+    
+    if ((first instanceof Symbol && first.name === 'quote') || first === 'quote') {
+      return expr[1];
     }
     
     if ((first instanceof Symbol && first.name === 'lambda') || first === 'lambda') {

@@ -63,4 +63,40 @@ describe('Lisp Evaluator', () => {
   test('throws error for invalid function calls', () => {
     expect(() => evaluate([sym('invalid-func'), 1, 2], env)).toThrow('Undefined variable: invalid-func');
   });
+
+  // Phase 7.1: List operation functions tests (RED phase)
+  describe('List operations', () => {
+    test('map function should transform list elements', () => {
+      const addOne = [sym('lambda'), [sym('x')], [sym('+'), sym('x'), 1]];
+      const result = evaluate([sym('map'), addOne, [sym('quote'), [1, 2, 3]]], env);
+      expect(result).toEqual([2, 3, 4]);
+    });
+
+    test('filter function should select matching elements', () => {
+      const isEven = [sym('lambda'), [sym('x')], [sym('eq'), [sym('%'), sym('x'), 2], 0]];
+      const result = evaluate([sym('filter'), isEven, [sym('quote'), [1, 2, 3, 4, 5, 6]]], env);
+      expect(result).toEqual([2, 4, 6]);
+    });
+
+    test('reduce function should accumulate list values', () => {
+      const add = [sym('lambda'), [sym('acc'), sym('x')], [sym('+'), sym('acc'), sym('x')]];
+      const result = evaluate([sym('reduce'), add, 0, [sym('quote'), [1, 2, 3, 4]]], env);
+      expect(result).toBe(10);
+    });
+
+    test('length function should return list length', () => {
+      expect(evaluate([sym('length'), [sym('quote'), [1, 2, 3]]], env)).toBe(3);
+      expect(evaluate([sym('length'), [sym('quote'), []]], env)).toBe(0);
+    });
+
+    test('nth function should return nth element', () => {
+      expect(evaluate([sym('nth'), 0, [sym('quote'), ['a', 'b', 'c']]], env)).toBe('a');
+      expect(evaluate([sym('nth'), 2, [sym('quote'), ['a', 'b', 'c']]], env)).toBe('c');
+    });
+
+    test('append function should concatenate lists', () => {
+      const result = evaluate([sym('append'), [sym('quote'), [1, 2]], [sym('quote'), [3, 4]]], env);
+      expect(result).toEqual([1, 2, 3, 4]);
+    });
+  });
 });
