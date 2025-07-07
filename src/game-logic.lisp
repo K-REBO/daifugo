@@ -77,8 +77,47 @@
 
 (defun validate-play-simple (state cards)
   "Simple validation logic"
-  (if (eq (car (cdr (car cards))) "5")
-      (if (eq (car (cdr (car state))) 4)
+  (if (eq (get (car cards) "rank") "5")
+      (if (eq (car (cdr (cdr (cdr state)))) nil)
           (list "valid" "Valid play on empty field")
           (list "invalid" "Cannot beat field cards"))
       (list "valid" "Valid stronger play")))
+
+(defun validate-against-field-cards (play-cards field-cards)
+  "Validate play cards against field cards"
+  (if (is-stronger-play play-cards field-cards)
+      (list "valid" "Valid stronger play")
+      (list "invalid" "Cannot beat field cards")))
+
+(defun is-stronger-play (play-cards field-cards)
+  "Check if play cards are stronger than field cards"
+  (rank-is-stronger (get (car play-cards) "rank") (get (car field-cards) "rank")))
+
+(defun rank-is-stronger (rank1 rank2)
+  "Check if rank1 is stronger than rank2"
+  (rank-compare (rank-to-number rank1) (rank-to-number rank2)))
+
+(defun rank-compare (num1 num2)
+  "Compare two numbers"
+  (if (eq num1 num2) nil
+      (if (eq num1 5)
+          (if (eq num2 14) nil t)
+          (if (eq num1 14)
+              (if (eq num2 5) t t)
+              nil))))
+
+(defun rank-to-number (rank)
+  "Convert rank to number for comparison"
+  (if (eq rank "A") 14
+      (if (eq rank "K") 13
+          (if (eq rank "Q") 12
+              (if (eq rank "J") 11
+                  (if (eq rank "10") 10
+                      (if (eq rank "9") 9
+                          (if (eq rank "8") 8
+                              (if (eq rank "7") 7
+                                  (if (eq rank "6") 6
+                                      (if (eq rank "5") 5
+                                          (if (eq rank "4") 4
+                                              (if (eq rank "3") 3
+                                                  0))))))))))))))
