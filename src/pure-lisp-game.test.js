@@ -590,4 +590,137 @@ describe('Pure Lisp Game Engine', () => {
       expect(updatedHand[2]).toEqual(newCards[0]);
     });
   });
+
+  describe('Pure Lisp Special Rules Engine Integration', () => {
+    beforeEach(() => {
+      evaluate([sym('load'), 'card-operations.lisp'], env);
+      evaluate([sym('load'), 'card-comparison.lisp'], env);
+      evaluate([sym('load'), 'game-logic.lisp'], env);
+    });
+
+    test('should apply eight-cut special rule', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const eightCard = [evaluate([sym('create-card'), '♠', '8'], env)];
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), eightCard], [sym('quote'), gameState]], env);
+      
+      expect(result.ruleApplied).toBe('eight-cut');
+      expect(result.fieldCleared).toBe(true);
+      expect(result.nextPlayerGetsControl).toBe(true);
+    });
+
+    test('should apply revolution special rule', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const fourCards = [
+        evaluate([sym('create-card'), '♠', '5'], env),
+        evaluate([sym('create-card'), '♥', '5'], env),
+        evaluate([sym('create-card'), '♦', '5'], env),
+        evaluate([sym('create-card'), '♣', '5'], env)
+      ];
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), fourCards], [sym('quote'), gameState]], env);
+      
+      expect(result.ruleApplied).toBe('revolution');
+      expect(result.cardOrderReversed).toBe(true);
+      expect(result.newGameState).toBeDefined();
+    });
+
+    test('should apply joker special rule', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const jokerCard = [evaluate([sym('create-joker')], env)];
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), jokerCard], [sym('quote'), gameState]], env);
+      
+      expect(result.ruleApplied).toBe('joker');
+      expect(result.canPlayOnAnything).toBe(true);
+    });
+
+    test('should check eleven-back special rule', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const elevenCard = [evaluate([sym('create-card'), '♠', 'J'], env)];
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), elevenCard], [sym('quote'), gameState]], env);
+      
+      expect(result.ruleApplied).toBe('eleven-back');
+      expect(result.skipNextPlayer).toBe(true);
+    });
+
+    test('should apply multiple special rules in priority order', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      // Four jokers should trigger both revolution and joker rules
+      const fourJokers = [
+        evaluate([sym('create-joker')], env),
+        evaluate([sym('create-joker')], env),
+        evaluate([sym('create-joker')], env),
+        evaluate([sym('create-joker')], env)
+      ];
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), fourJokers], [sym('quote'), gameState]], env);
+      
+      expect(result.rulesApplied).toContain('revolution');
+      expect(result.rulesApplied).toContain('joker');
+      expect(result.cardOrderReversed).toBe(true);
+      expect(result.canPlayOnAnything).toBe(true);
+    });
+
+    test('should integrate with existing .lisp rule files', () => {
+      // Test loading and executing rules from external files
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const testCards = [evaluate([sym('create-card'), '♠', '8'], env)];
+      
+      // Load special rules from file (if exists)
+      const loadResult = evaluate([sym('load-special-rules'), 'special-rules.lisp'], env);
+      expect(loadResult).toBe(true);
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), testCards], [sym('quote'), gameState]], env);
+      expect(result).toBeDefined();
+    });
+
+    test('should handle rule priority and conflicts', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const conflictCards = [evaluate([sym('create-card'), '♠', '8'], env)]; // Eight-cut card
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), conflictCards], [sym('quote'), gameState]], env);
+      
+      expect(result.ruleApplied).toBe('eight-cut'); // Should prioritize eight-cut
+      expect(result.conflictsResolved).toBe(true);
+    });
+
+    test('should support dynamic rule loading', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Define a custom rule dynamically
+      const customRule = {
+        name: 'custom-test-rule',
+        condition: (cards) => cards.length === 3,
+        effect: { customEffect: true }
+      };
+      
+      const registerResult = evaluate([sym('register-custom-rule'), [sym('quote'), customRule]], env);
+      expect(registerResult).toBe(true);
+      
+      const threeCards = [
+        evaluate([sym('create-card'), '♠', '6'], env),
+        evaluate([sym('create-card'), '♥', '6'], env),
+        evaluate([sym('create-card'), '♦', '6'], env)
+      ];
+      
+      const result = evaluate([sym('apply-special-rules'), [sym('quote'), threeCards], [sym('quote'), gameState]], env);
+      expect(result.ruleApplied).toBe('custom-test-rule');
+    });
+
+    test('should validate rule application with error handling', () => {
+      const invalidGameState = ["invalid-state"];
+      const cards = [evaluate([sym('create-card'), '♠', '8'], env)];
+      
+      expect(() => {
+        evaluate([sym('apply-special-rules'), [sym('quote'), cards], [sym('quote'), invalidGameState]], env);
+      }).toThrow('apply-special-rules: invalid game state format');
+      
+      // Test with invalid cards
+      expect(() => {
+        evaluate([sym('apply-special-rules'), [sym('quote'), null], [sym('quote'), evaluate([sym('init-game-state'), 4], env)]], env);
+      }).toThrow('apply-special-rules: cards must be an array');
+    });
+  });
 });
