@@ -297,5 +297,36 @@ describe('Pure Lisp Game Engine', () => {
       
       expect(updatedState[2]).toBe(0); // should wrap to player 0
     });
+
+    test('should provide helper functions for state inspection', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      const playerCount = evaluate([sym('get-player-count'), [sym('quote'), gameState]], env);
+      expect(playerCount).toBe(4);
+      
+      const currentPlayer = evaluate([sym('get-current-player'), [sym('quote'), gameState]], env);
+      expect(currentPlayer).toBe(0);
+    });
+
+    test('should support reset-field action', () => {
+      const initialState = evaluate([sym('init-game-state'), 4], env);
+      const fieldCards = [evaluate([sym('create-card'), '♠', 'K'], env)];
+      const setAction = { type: "set-field", cards: fieldCards };
+      const resetAction = { type: "reset-field" };
+      
+      const stateWithField = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), setAction]], env);
+      expect(stateWithField[3]).toEqual(fieldCards);
+      
+      const resetState = evaluate([sym('update-game-state'), [sym('quote'), stateWithField], [sym('quote'), resetAction]], env);
+      expect(resetState[3]).toBe(null);
+    });
+
+    test('should handle unknown actions gracefully', () => {
+      const initialState = evaluate([sym('init-game-state'), 4], env);
+      const unknownAction = { type: "unknown-action" };
+      
+      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), unknownAction]], env);
+      expect(updatedState).toEqual(initialState); // should return original state
+    });
   });
 });

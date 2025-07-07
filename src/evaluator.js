@@ -428,22 +428,68 @@ function createEnvironment() {
     return Object.freeze({ suit: null, rank: 'JOKER' });
   });
 
-  // Game State Management Functions
+  // Game State Management Functions - Immutable and optimized
   env.define('init-game-state', (playerCount) => {
-    return ["game-state", playerCount, 0, null];
+    // Validate input
+    if (typeof playerCount !== 'number' || playerCount < 2 || playerCount > 6) {
+      throw new Error('init-game-state: player count must be between 2 and 6');
+    }
+    // Return frozen immutable state
+    return Object.freeze(["game-state", playerCount, 0, null]);
   });
 
   env.define('update-game-state', (state, action) => {
-    if (action.type === "next-player") {
-      const playerCount = state[1];
-      const currentPlayer = state[2];
-      const fieldCards = state[3];
-      const nextPlayer = (currentPlayer + 1) % playerCount;
-      return ["game-state", playerCount, nextPlayer, fieldCards];
-    } else if (action.type === "set-field") {
-      return ["game-state", state[1], state[2], action.cards];
+    // Validate state structure
+    if (!Array.isArray(state) || state[0] !== "game-state") {
+      throw new Error('update-game-state: invalid game state format');
     }
-    return state;
+    
+    // Validate action structure
+    if (!action || typeof action.type !== 'string') {
+      throw new Error('update-game-state: action must have a type property');
+    }
+
+    const [gameStateType, playerCount, currentPlayer, fieldCards] = state;
+
+    switch (action.type) {
+      case "next-player": {
+        const nextPlayer = (currentPlayer + 1) % playerCount;
+        return Object.freeze([gameStateType, playerCount, nextPlayer, fieldCards]);
+      }
+      
+      case "set-field": {
+        // Validate field cards
+        if (action.cards && !Array.isArray(action.cards)) {
+          throw new Error('update-game-state: field cards must be an array');
+        }
+        // Deep freeze field cards for immutability
+        const frozenCards = action.cards ? Object.freeze([...action.cards]) : null;
+        return Object.freeze([gameStateType, playerCount, currentPlayer, frozenCards]);
+      }
+      
+      case "reset-field": {
+        return Object.freeze([gameStateType, playerCount, currentPlayer, null]);
+      }
+      
+      default:
+        // Return original state for unknown actions (no mutation)
+        return state;
+    }
+  });
+
+  // Helper functions for game state inspection
+  env.define('get-player-count', (state) => {
+    if (!Array.isArray(state) || state[0] !== "game-state") {
+      throw new Error('get-player-count: invalid game state');
+    }
+    return state[1];
+  });
+
+  env.define('get-current-player', (state) => {
+    if (!Array.isArray(state) || state[0] !== "game-state") {
+      throw new Error('get-current-player: invalid game state');
+    }
+    return state[2];
   });
 
   env.define('card-suit', (card) => {
