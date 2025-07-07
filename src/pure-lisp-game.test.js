@@ -205,7 +205,8 @@ describe('Pure Lisp Game Engine', () => {
     });
 
     test('should validate play against empty field', () => {
-      const gameState = evaluate([sym('create-game-state'), 4], env);
+      // Manually create game state with field cards slot
+      const gameState = ["game-state", 4, 0, null];
       const cards = [evaluate([sym('create-card'), '♠', '5'], env)];
       
       const validation = evaluate([sym('validate-play'), [sym('quote'), gameState], [sym('quote'), cards]], env);
