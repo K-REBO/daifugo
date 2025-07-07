@@ -840,118 +840,200 @@ function createEnvironment() {
     };
   });
 
-  // Phase 7.7: Hand Management System Functions - Immutable and optimized
+  // Phase 7.7: Hand Management System Functions - Immutable and optimized with debugging
   
-  // Helper function for hand validation
+  // Helper function for hand validation with enhanced debugging
   const validateHand = (hand, functionName) => {
     if (!Array.isArray(hand)) {
-      throw new Error(`${functionName}: hand must be an array`);
+      throw new Error(`${functionName}: hand must be an array, received ${typeof hand}`);
     }
+    
+    // Validate each card in the hand
+    hand.forEach((card, index) => {
+      if (typeof card !== 'object' || card === null) {
+        throw new Error(`${functionName}: invalid card at index ${index}, must be a card object`);
+      }
+    });
   };
 
-  // Helper function for card equality check
+  // Helper function for card equality check with debugging
   const cardsEqual = (card1, card2) => {
     if (typeof card1 !== 'object' || typeof card2 !== 'object') {
+      return false;
+    }
+    if (card1 === null || card2 === null) {
       return false;
     }
     return card1.suit === card2.suit && card1.rank === card2.rank;
   };
 
+  // Atomic operation wrapper for debugging
+  const atomicHandOperation = (operationName, operation) => {
+    try {
+      const result = operation();
+      console.debug(`${operationName}: operation completed successfully`);
+      return result;
+    } catch (error) {
+      console.error(`${operationName}: operation failed - ${error.message}`);
+      throw error;
+    }
+  };
+
   env.define('deal-cards', (deck, playerCount) => {
-    if (!Array.isArray(deck)) {
-      throw new Error('deal-cards: deck must be an array');
-    }
-    if (typeof playerCount !== 'number' || playerCount < 2 || playerCount > 6) {
-      throw new Error('deal-cards: player count must be between 2 and 6');
-    }
-    
-    const hands = [];
-    for (let i = 0; i < playerCount; i++) {
-      hands.push([]);
-    }
-    
-    // Distribute cards round-robin style
-    for (let i = 0; i < deck.length; i++) {
-      const playerIndex = i % playerCount;
-      hands[playerIndex].push(deck[i]);
-    }
-    
-    // Return immutable hands
-    return hands.map(hand => Object.freeze([...hand]));
+    return atomicHandOperation('deal-cards', () => {
+      if (!Array.isArray(deck)) {
+        throw new Error('deal-cards: deck must be an array');
+      }
+      if (typeof playerCount !== 'number' || playerCount < 2 || playerCount > 6) {
+        throw new Error('deal-cards: player count must be between 2 and 6');
+      }
+      
+      console.debug(`deal-cards: dealing ${deck.length} cards to ${playerCount} players`);
+      
+      const hands = [];
+      for (let i = 0; i < playerCount; i++) {
+        hands.push([]);
+      }
+      
+      // Distribute cards round-robin style with validation
+      for (let i = 0; i < deck.length; i++) {
+        const card = deck[i];
+        if (typeof card !== 'object' || card === null) {
+          throw new Error(`deal-cards: invalid card at deck index ${i}`);
+        }
+        
+        const playerIndex = i % playerCount;
+        hands[playerIndex].push(card);
+      }
+      
+      // Log distribution summary
+      hands.forEach((hand, index) => {
+        console.debug(`deal-cards: player ${index} received ${hand.length} cards`);
+      });
+      
+      // Return immutable hands
+      return hands.map(hand => Object.freeze([...hand]));
+    });
   });
 
   env.define('add-cards-to-hand', (hand, cards) => {
-    validateHand(hand, 'add-cards-to-hand');
-    if (!Array.isArray(cards)) {
-      throw new Error('add-cards-to-hand: cards must be an array');
-    }
-    
-    // Create new hand with added cards (immutable)
-    return Object.freeze([...hand, ...cards]);
+    return atomicHandOperation('add-cards-to-hand', () => {
+      validateHand(hand, 'add-cards-to-hand');
+      if (!Array.isArray(cards)) {
+        throw new Error('add-cards-to-hand: cards must be an array');
+      }
+      
+      // Validate cards to be added
+      validateHand(cards, 'add-cards-to-hand (new cards)');
+      
+      console.debug(`add-cards-to-hand: adding ${cards.length} cards to hand of ${hand.length} cards`);
+      
+      // Create new hand with added cards (immutable, atomic operation)
+      const newHand = [...hand, ...cards];
+      console.debug(`add-cards-to-hand: new hand size is ${newHand.length}`);
+      
+      return Object.freeze(newHand);
+    });
   });
 
   env.define('remove-cards-from-hand', (hand, cardsToRemove) => {
-    validateHand(hand, 'remove-cards-from-hand');
-    if (!Array.isArray(cardsToRemove)) {
-      throw new Error('remove-cards-from-hand: cardsToRemove must be an array');
-    }
-    
-    // Create new hand with cards removed (immutable)
-    const newHand = hand.filter(card => {
-      return !cardsToRemove.some(removeCard => cardsEqual(card, removeCard));
+    return atomicHandOperation('remove-cards-from-hand', () => {
+      validateHand(hand, 'remove-cards-from-hand');
+      if (!Array.isArray(cardsToRemove)) {
+        throw new Error('remove-cards-from-hand: cardsToRemove must be an array');
+      }
+      
+      validateHand(cardsToRemove, 'remove-cards-from-hand (cards to remove)');
+      
+      console.debug(`remove-cards-from-hand: removing ${cardsToRemove.length} cards from hand of ${hand.length} cards`);
+      
+      // Track which cards were actually found and removed
+      let removedCount = 0;
+      
+      // Create new hand with cards removed (immutable, atomic operation)
+      const newHand = hand.filter(card => {
+        const shouldRemove = cardsToRemove.some(removeCard => cardsEqual(card, removeCard));
+        if (shouldRemove) {
+          removedCount++;
+        }
+        return !shouldRemove;
+      });
+      
+      console.debug(`remove-cards-from-hand: actually removed ${removedCount} cards, new hand size is ${newHand.length}`);
+      
+      // Warn if not all cards were found
+      if (removedCount < cardsToRemove.length) {
+        console.warn(`remove-cards-from-hand: only ${removedCount} of ${cardsToRemove.length} cards were found and removed`);
+      }
+      
+      return Object.freeze(newHand);
     });
-    
-    return Object.freeze(newHand);
   });
 
   env.define('set-player-hand', (gameState, playerIndex, cards) => {
-    validateGameState(gameState, 'set-player-hand');
-    if (typeof playerIndex !== 'number' || playerIndex < 0) {
-      throw new Error('set-player-hand: playerIndex must be a non-negative number');
-    }
-    if (!Array.isArray(cards)) {
-      throw new Error('set-player-hand: cards must be an array');
-    }
-    
-    const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = gameState;
-    
-    if (playerIndex >= playerCount) {
-      throw new Error('set-player-hand: playerIndex exceeds player count');
-    }
-    
-    // Create new game state with player hands
-    const hands = gameData?.hands || [];
-    const newHands = [...hands];
-    
-    // Ensure hands array is large enough
-    while (newHands.length <= playerIndex) {
-      newHands.push([]);
-    }
-    
-    newHands[playerIndex] = Object.freeze([...cards]);
-    
-    const newGameData = {
-      ...gameData,
-      hands: Object.freeze(newHands)
-    };
-    
-    return Object.freeze([gameStateType, playerCount, currentPlayer, fieldCards, newGameData]);
+    return atomicHandOperation('set-player-hand', () => {
+      validateGameState(gameState, 'set-player-hand');
+      if (typeof playerIndex !== 'number' || playerIndex < 0) {
+        throw new Error('set-player-hand: playerIndex must be a non-negative number');
+      }
+      if (!Array.isArray(cards)) {
+        throw new Error('set-player-hand: cards must be an array');
+      }
+      
+      validateHand(cards, 'set-player-hand (cards)');
+      
+      const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = gameState;
+      
+      if (playerIndex >= playerCount) {
+        throw new Error('set-player-hand: playerIndex exceeds player count');
+      }
+      
+      console.debug(`set-player-hand: setting ${cards.length} cards for player ${playerIndex}`);
+      
+      // Create new game state with player hands (atomic operation)
+      const hands = gameData?.hands || [];
+      const newHands = [...hands];
+      
+      // Ensure hands array is large enough
+      while (newHands.length <= playerIndex) {
+        newHands.push([]);
+        console.debug(`set-player-hand: initialized empty hand for player ${newHands.length - 1}`);
+      }
+      
+      const oldHandSize = newHands[playerIndex]?.length || 0;
+      newHands[playerIndex] = Object.freeze([...cards]);
+      
+      console.debug(`set-player-hand: player ${playerIndex} hand size changed from ${oldHandSize} to ${cards.length}`);
+      
+      const newGameData = {
+        ...gameData,
+        hands: Object.freeze(newHands)
+      };
+      
+      return Object.freeze([gameStateType, playerCount, currentPlayer, fieldCards, newGameData]);
+    });
   });
 
   env.define('get-player-hand', (gameState, playerIndex) => {
-    validateGameState(gameState, 'get-player-hand');
-    if (typeof playerIndex !== 'number' || playerIndex < 0) {
-      throw new Error('get-player-hand: playerIndex must be a non-negative number');
-    }
-    
-    const [, playerCount, , , gameData] = gameState;
-    
-    if (playerIndex >= playerCount) {
-      throw new Error('get-player-hand: playerIndex exceeds player count');
-    }
-    
-    const hands = gameData?.hands || [];
-    return hands[playerIndex] || [];
+    return atomicHandOperation('get-player-hand', () => {
+      validateGameState(gameState, 'get-player-hand');
+      if (typeof playerIndex !== 'number' || playerIndex < 0) {
+        throw new Error('get-player-hand: playerIndex must be a non-negative number');
+      }
+      
+      const [, playerCount, , , gameData] = gameState;
+      
+      if (playerIndex >= playerCount) {
+        throw new Error('get-player-hand: playerIndex exceeds player count');
+      }
+      
+      const hands = gameData?.hands || [];
+      const hand = hands[playerIndex] || [];
+      
+      console.debug(`get-player-hand: player ${playerIndex} has ${hand.length} cards`);
+      
+      return hand;
+    });
   });
   
   return env;
