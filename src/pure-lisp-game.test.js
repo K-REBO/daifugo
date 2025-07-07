@@ -239,4 +239,63 @@ describe('Pure Lisp Game Engine', () => {
       expect(validation[0]).toBe("invalid");
     });
   });
+
+  describe('Pure Lisp Game State Management', () => {
+    test('should initialize game state with player count', () => {
+      const initialState = evaluate([sym('init-game-state'), 4], env);
+      expect(initialState[0]).toBe("game-state");
+      expect(initialState[1]).toBe(4); // player count
+      expect(initialState[2]).toBe(0); // current player
+      expect(initialState[3]).toBe(null); // field cards
+    });
+
+    test('should initialize game state with default values', () => {
+      const initialState = evaluate([sym('init-game-state'), 2], env);
+      expect(initialState).toEqual(["game-state", 2, 0, null]);
+    });
+
+    test('should update game state with new current player', () => {
+      const initialState = evaluate([sym('init-game-state'), 4], env);
+      const action = { type: "next-player" };
+      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), action]], env);
+      
+      expect(updatedState[0]).toBe("game-state");
+      expect(updatedState[1]).toBe(4); // player count unchanged
+      expect(updatedState[2]).toBe(1); // current player advanced
+      expect(updatedState[3]).toBe(null); // field cards unchanged
+    });
+
+    test('should update game state with field card changes', () => {
+      const initialState = evaluate([sym('init-game-state'), 4], env);
+      const newFieldCards = [evaluate([sym('create-card'), '♠', 'K'], env)];
+      const action = { type: "set-field", cards: newFieldCards };
+      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), action]], env);
+      
+      expect(updatedState[0]).toBe("game-state");
+      expect(updatedState[1]).toBe(4);
+      expect(updatedState[2]).toBe(0);
+      expect(updatedState[3]).toEqual(newFieldCards);
+    });
+
+    test('should update game state with multiple actions', () => {
+      const initialState = evaluate([sym('init-game-state'), 3], env);
+      const action1 = { type: "next-player" };
+      const action2 = { type: "next-player" };
+      
+      const state1 = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), action1]], env);
+      const state2 = evaluate([sym('update-game-state'), [sym('quote'), state1], [sym('quote'), action2]], env);
+      
+      expect(state2[2]).toBe(2); // current player should be 2
+    });
+
+    test('should handle wrapping current player', () => {
+      const initialState = evaluate([sym('init-game-state'), 3], env);
+      // Start with player 2
+      const startState = ["game-state", 3, 2, null];
+      const action = { type: "next-player" };
+      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), startState], [sym('quote'), action]], env);
+      
+      expect(updatedState[2]).toBe(0); // should wrap to player 0
+    });
+  });
 });
