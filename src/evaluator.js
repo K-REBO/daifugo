@@ -839,6 +839,120 @@ function createEnvironment() {
       strength2
     };
   });
+
+  // Phase 7.7: Hand Management System Functions - Immutable and optimized
+  
+  // Helper function for hand validation
+  const validateHand = (hand, functionName) => {
+    if (!Array.isArray(hand)) {
+      throw new Error(`${functionName}: hand must be an array`);
+    }
+  };
+
+  // Helper function for card equality check
+  const cardsEqual = (card1, card2) => {
+    if (typeof card1 !== 'object' || typeof card2 !== 'object') {
+      return false;
+    }
+    return card1.suit === card2.suit && card1.rank === card2.rank;
+  };
+
+  env.define('deal-cards', (deck, playerCount) => {
+    if (!Array.isArray(deck)) {
+      throw new Error('deal-cards: deck must be an array');
+    }
+    if (typeof playerCount !== 'number' || playerCount < 2 || playerCount > 6) {
+      throw new Error('deal-cards: player count must be between 2 and 6');
+    }
+    
+    const hands = [];
+    for (let i = 0; i < playerCount; i++) {
+      hands.push([]);
+    }
+    
+    // Distribute cards round-robin style
+    for (let i = 0; i < deck.length; i++) {
+      const playerIndex = i % playerCount;
+      hands[playerIndex].push(deck[i]);
+    }
+    
+    // Return immutable hands
+    return hands.map(hand => Object.freeze([...hand]));
+  });
+
+  env.define('add-cards-to-hand', (hand, cards) => {
+    validateHand(hand, 'add-cards-to-hand');
+    if (!Array.isArray(cards)) {
+      throw new Error('add-cards-to-hand: cards must be an array');
+    }
+    
+    // Create new hand with added cards (immutable)
+    return Object.freeze([...hand, ...cards]);
+  });
+
+  env.define('remove-cards-from-hand', (hand, cardsToRemove) => {
+    validateHand(hand, 'remove-cards-from-hand');
+    if (!Array.isArray(cardsToRemove)) {
+      throw new Error('remove-cards-from-hand: cardsToRemove must be an array');
+    }
+    
+    // Create new hand with cards removed (immutable)
+    const newHand = hand.filter(card => {
+      return !cardsToRemove.some(removeCard => cardsEqual(card, removeCard));
+    });
+    
+    return Object.freeze(newHand);
+  });
+
+  env.define('set-player-hand', (gameState, playerIndex, cards) => {
+    validateGameState(gameState, 'set-player-hand');
+    if (typeof playerIndex !== 'number' || playerIndex < 0) {
+      throw new Error('set-player-hand: playerIndex must be a non-negative number');
+    }
+    if (!Array.isArray(cards)) {
+      throw new Error('set-player-hand: cards must be an array');
+    }
+    
+    const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = gameState;
+    
+    if (playerIndex >= playerCount) {
+      throw new Error('set-player-hand: playerIndex exceeds player count');
+    }
+    
+    // Create new game state with player hands
+    const hands = gameData?.hands || [];
+    const newHands = [...hands];
+    
+    // Ensure hands array is large enough
+    while (newHands.length <= playerIndex) {
+      newHands.push([]);
+    }
+    
+    newHands[playerIndex] = Object.freeze([...cards]);
+    
+    const newGameData = {
+      ...gameData,
+      hands: Object.freeze(newHands)
+    };
+    
+    return Object.freeze([gameStateType, playerCount, currentPlayer, fieldCards, newGameData]);
+  });
+
+  env.define('get-player-hand', (gameState, playerIndex) => {
+    validateGameState(gameState, 'get-player-hand');
+    if (typeof playerIndex !== 'number' || playerIndex < 0) {
+      throw new Error('get-player-hand: playerIndex must be a non-negative number');
+    }
+    
+    const [, playerCount, , , gameData] = gameState;
+    
+    if (playerIndex >= playerCount) {
+      throw new Error('get-player-hand: playerIndex exceeds player count');
+    }
+    
+    const hands = gameData?.hands || [];
+    return hands[playerIndex] || [];
+  });
   
   return env;
 }

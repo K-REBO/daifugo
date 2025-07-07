@@ -436,4 +436,158 @@ describe('Pure Lisp Game Engine', () => {
       }).toThrow('process-turn: play action must include cards array');
     });
   });
+
+  describe('Pure Lisp Hand Management System', () => {
+    test('should deal cards from deck to players', () => {
+      const deck = [
+        evaluate([sym('create-card'), '♠', '3'], env),
+        evaluate([sym('create-card'), '♥', '4'], env),
+        evaluate([sym('create-card'), '♦', '5'], env),
+        evaluate([sym('create-card'), '♣', '6'], env),
+        evaluate([sym('create-card'), '♠', '7'], env),
+        evaluate([sym('create-card'), '♥', '8'], env)
+      ];
+      
+      const hands = evaluate([sym('deal-cards'), [sym('quote'), deck], 3], env);
+      
+      expect(Array.isArray(hands)).toBe(true);
+      expect(hands.length).toBe(3); // 3 players
+      
+      // Each player should have 2 cards (6 cards / 3 players)
+      hands.forEach(hand => {
+        expect(Array.isArray(hand)).toBe(true);
+        expect(hand.length).toBe(2);
+      });
+      
+      // All cards should be distributed
+      const totalCards = hands.flat().length;
+      expect(totalCards).toBe(6);
+    });
+
+    test('should handle uneven card distribution', () => {
+      const deck = [
+        evaluate([sym('create-card'), '♠', '3'], env),
+        evaluate([sym('create-card'), '♥', '4'], env),
+        evaluate([sym('create-card'), '♦', '5'], env),
+        evaluate([sym('create-card'), '♣', '6'], env),
+        evaluate([sym('create-card'), '♠', '7'], env)
+      ];
+      
+      const hands = evaluate([sym('deal-cards'), [sym('quote'), deck], 3], env);
+      
+      expect(hands.length).toBe(3);
+      
+      // Some players may have more cards than others
+      const cardCounts = hands.map(hand => hand.length);
+      const totalCards = cardCounts.reduce((sum, count) => sum + count, 0);
+      expect(totalCards).toBe(5);
+      
+      // Difference between max and min should be at most 1
+      const maxCards = Math.max(...cardCounts);
+      const minCards = Math.min(...cardCounts);
+      expect(maxCards - minCards).toBeLessThanOrEqual(1);
+    });
+
+    test('should add cards to existing hand', () => {
+      const existingHand = [
+        evaluate([sym('create-card'), '♠', '3'], env),
+        evaluate([sym('create-card'), '♥', '4'], env)
+      ];
+      const newCards = [
+        evaluate([sym('create-card'), '♦', '5'], env),
+        evaluate([sym('create-card'), '♣', '6'], env)
+      ];
+      
+      const updatedHand = evaluate([sym('add-cards-to-hand'), [sym('quote'), existingHand], [sym('quote'), newCards]], env);
+      
+      expect(Array.isArray(updatedHand)).toBe(true);
+      expect(updatedHand.length).toBe(4);
+      
+      // Original cards should be preserved
+      expect(updatedHand).toContain(existingHand[0]);
+      expect(updatedHand).toContain(existingHand[1]);
+      
+      // New cards should be added
+      expect(updatedHand).toContain(newCards[0]);
+      expect(updatedHand).toContain(newCards[1]);
+    });
+
+    test('should remove cards from hand', () => {
+      const hand = [
+        evaluate([sym('create-card'), '♠', '3'], env),
+        evaluate([sym('create-card'), '♥', '4'], env),
+        evaluate([sym('create-card'), '♦', '5'], env),
+        evaluate([sym('create-card'), '♣', '6'], env)
+      ];
+      const cardsToRemove = [hand[1], hand[3]]; // Remove ♥4 and ♣6
+      
+      const updatedHand = evaluate([sym('remove-cards-from-hand'), [sym('quote'), hand], [sym('quote'), cardsToRemove]], env);
+      
+      expect(Array.isArray(updatedHand)).toBe(true);
+      expect(updatedHand.length).toBe(2);
+      
+      // Remaining cards should be ♠3 and ♦5
+      expect(updatedHand).toContain(hand[0]);
+      expect(updatedHand).toContain(hand[2]);
+      expect(updatedHand).not.toContain(hand[1]);
+      expect(updatedHand).not.toContain(hand[3]);
+    });
+
+    test('should get cards from player hand in game state', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const playerCards = [
+        evaluate([sym('create-card'), '♠', 'K'], env),
+        evaluate([sym('create-card'), '♥', 'Q'], env)
+      ];
+      
+      // Set player 0's hand
+      const updatedState = evaluate([sym('set-player-hand'), [sym('quote'), gameState], 0, [sym('quote'), playerCards]], env);
+      const retrievedCards = evaluate([sym('get-player-hand'), [sym('quote'), updatedState], 0], env);
+      
+      expect(retrievedCards).toEqual(playerCards);
+    });
+
+    test('should handle empty hands gracefully', () => {
+      const emptyHand = [];
+      const newCards = [evaluate([sym('create-card'), '♠', 'A'], env)];
+      
+      const updatedHand = evaluate([sym('add-cards-to-hand'), [sym('quote'), emptyHand], [sym('quote'), newCards]], env);
+      
+      expect(updatedHand).toEqual(newCards);
+    });
+
+    test('should validate hand operations with proper error handling', () => {
+      // Test invalid deck for deal-cards
+      expect(() => {
+        evaluate([sym('deal-cards'), [sym('quote'), null], 3], env);
+      }).toThrow();
+      
+      // Test invalid player count
+      expect(() => {
+        evaluate([sym('deal-cards'), [sym('quote'), []], 0], env);
+      }).toThrow();
+      
+      // Test invalid hand for add-cards-to-hand
+      expect(() => {
+        evaluate([sym('add-cards-to-hand'), [sym('quote'), null], [sym('quote'), []]], env);
+      }).toThrow();
+    });
+
+    test('should maintain hand order when adding cards', () => {
+      const existingHand = [
+        evaluate([sym('create-card'), '♠', '3'], env),
+        evaluate([sym('create-card'), '♥', '4'], env)
+      ];
+      const newCards = [
+        evaluate([sym('create-card'), '♦', '5'], env)
+      ];
+      
+      const updatedHand = evaluate([sym('add-cards-to-hand'), [sym('quote'), existingHand], [sym('quote'), newCards]], env);
+      
+      // New cards should be added at the end
+      expect(updatedHand[0]).toEqual(existingHand[0]);
+      expect(updatedHand[1]).toEqual(existingHand[1]);
+      expect(updatedHand[2]).toEqual(newCards[0]);
+    });
+  });
 });
