@@ -111,6 +111,11 @@ class GameLogic {
       }
     }
 
+    // Check for 8-cut rule first (only if enabled in rule settings and single 8 card)
+    if (this.has8Cut(cards) && this.isRuleEnabled('eight-cut') && cards.length === 1) {
+      return { valid: true, reason: '8切り！', special: '8cut' };
+    }
+
     // Check if it beats the last played cards
     if (this.lastPlayedCards.length > 0) {
       // Must play same number of cards
@@ -127,13 +132,8 @@ class GameLogic {
       }
     }
 
-    // Check for 8-cut rule
-    if (this.has8Cut(cards)) {
-      return { valid: true, reason: '8切り！', special: '8cut' };
-    }
-
-    // Check for revolution
-    if (cards.length === 4) {
+    // Check for revolution (only if enabled in rule settings)
+    if (cards.length === 4 && this.isRuleEnabled('revolution')) {
       return { valid: true, reason: '革命！', special: 'revolution' };
     }
 
@@ -159,6 +159,17 @@ class GameLogic {
   }
 
   /**
+   * Check if a rule is enabled in rule settings
+   */
+  isRuleEnabled(ruleId) {
+    if (window.ruleSettings && window.ruleSettings.activeRules) {
+      return window.ruleSettings.activeRules.has(ruleId);
+    }
+    // Default to enabled if rule settings not available
+    return true;
+  }
+
+  /**
    * Play cards from current player
    */
   playCards(cards) {
@@ -181,13 +192,25 @@ class GameLogic {
     if (validation.special === 'revolution') {
       this.isRevolution = !this.isRevolution;
       console.log(`🔄 Revolution! New state: ${this.isRevolution}`);
+      
+      // Trigger rule activation event
+      this.triggerRuleActivation('revolution', '🔄 革命！カードの強さが逆転しました', {
+        type: 'special',
+        animation: 'bounce'
+      });
     }
     
     if (validation.special === '8cut') {
       this.fieldCards = [];
       this.lastPlayedCards = [];
       this.lastPlayerName = ''; // Clear last player when field is cleared
-      console.log('✂️ 8-cut! Field cleared');
+      console.log('✂️ 8-cut! Field cleared - same player continues');
+      
+      // Trigger rule activation event
+      this.triggerRuleActivation('eight-cut', '✂️ 8切り！場をクリアしました', {
+        type: 'success',
+        animation: 'bounce'
+      });
     }
 
     // Check if player finished
@@ -203,8 +226,10 @@ class GameLogic {
     // Reset skip counter
     this.skipCount = 0;
 
-    // Move to next turn
-    this.nextTurn();
+    // Move to next turn (but not for 8-cut - same player continues)
+    if (validation.special !== '8cut') {
+      this.nextTurn();
+    }
 
     return { 
       success: true, 
@@ -340,6 +365,30 @@ class GameLogic {
     });
     
     console.log('🔄 Game reset');
+  }
+
+  /**
+   * Trigger rule activation event for UI notifications
+   * @param {string} ruleId - Rule identifier
+   * @param {string} message - Display message
+   * @param {object} data - Additional data
+   */
+  triggerRuleActivation(ruleId, message, data = {}) {
+    // Create custom event
+    const event = new CustomEvent('ruleActivated', {
+      detail: {
+        ruleId,
+        message,
+        data,
+        timestamp: Date.now(),
+        gameState: this.getGameStatus()
+      }
+    });
+    
+    // Dispatch event
+    document.dispatchEvent(event);
+    
+    console.log(`🎯 Rule activated: ${ruleId} - ${message}`);
   }
 }
 

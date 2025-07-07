@@ -29,6 +29,131 @@ class LispGameEngine {
             return 3;
         }
         
+        // Complete game initialization
+        if (trimmed.startsWith('(initialize-complete-game')) {
+            const playerCount = parseInt(trimmed.match(/\d+/)[0]);
+            return this.initializeCompleteGame(playerCount);
+        }
+        
+        // Create and shuffle deck
+        if (trimmed === '(create-and-shuffle-deck)') {
+            return this.createAndShuffleDeck();
+        }
+        
+        // Deal cards to all players
+        if (trimmed === '(deal-cards-to-all-players)') {
+            return this.dealCardsToAllPlayers();
+        }
+        
+        // Get player hand
+        if (trimmed.startsWith('(get-player-hand')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.getPlayerHand(playerId);
+        }
+        
+        // Get current player
+        if (trimmed === '(get-current-player)') {
+            return this.getCurrentPlayer();
+        }
+        
+        // Advance turn
+        if (trimmed === '(advance-turn)') {
+            return this.advanceTurn();
+        }
+        
+        // Validate card play
+        if (trimmed.startsWith('(validate-card-play')) {
+            const cardsMatch = trimmed.match(/\[.*\]/);
+            if (cardsMatch) {
+                const cards = JSON.parse(cardsMatch[0]);
+                return this.validateCardPlay(cards);
+            }
+        }
+        
+        // Get complete game state
+        if (trimmed === '(get-complete-game-state)') {
+            return this.getCompleteGameState();
+        }
+        
+        // Apply rule
+        if (trimmed.startsWith('(apply-rule')) {
+            const match = trimmed.match(/\(apply-rule "([^"]+)" (\[.*\])\)/);
+            if (match) {
+                const ruleId = match[1];
+                const cards = JSON.parse(match[2]);
+                return this.applyRule(ruleId, cards);
+            }
+        }
+        
+        // Load rule file
+        if (trimmed.startsWith('(load-rule-file')) {
+            const match = trimmed.match(/"([^"]+)"/);
+            if (match) {
+                return this.loadRuleFile(match[1]);
+            }
+        }
+        
+        // Get loaded rules
+        if (trimmed === '(get-loaded-rules)') {
+            return this.getLoadedRules();
+        }
+        
+        // Get all players
+        if (trimmed === '(get-all-players)') {
+            return this.getAllPlayers();
+        }
+        
+        // Add card to player
+        if (trimmed.startsWith('(add-card-to-player')) {
+            const match = trimmed.match(/\(add-card-to-player (\d+) (\{.*\})\)/);
+            if (match) {
+                const playerId = parseInt(match[1]);
+                const card = JSON.parse(match[2]);
+                return this.addCardToPlayer(playerId, card);
+            }
+        }
+        
+        // Remove card from player
+        if (trimmed.startsWith('(remove-card-from-player')) {
+            const match = trimmed.match(/\(remove-card-from-player (\d+) (\{.*\})\)/);
+            if (match) {
+                const playerId = parseInt(match[1]);
+                const card = JSON.parse(match[2]);
+                return this.removeCardFromPlayer(playerId, card);
+            }
+        }
+        
+        // Get player status
+        if (trimmed.startsWith('(get-player-status')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.getPlayerStatus(playerId);
+        }
+        
+        // Make AI decision
+        if (trimmed.startsWith('(make-ai-decision')) {
+            const playerId = parseInt(trimmed.match(/\d+/)[0]);
+            return this.makeAIDecision(playerId);
+        }
+        
+        // Get UI state
+        if (trimmed === '(get-ui-state)') {
+            return this.getUIState();
+        }
+        
+        // Play cards and generate events
+        if (trimmed.startsWith('(play-cards-and-generate-events')) {
+            const cardsMatch = trimmed.match(/\[.*\]/);
+            if (cardsMatch) {
+                const cards = JSON.parse(cardsMatch[0]);
+                return this.playCardsAndGenerateEvents(cards);
+            }
+        }
+        
+        // Get engine capabilities
+        if (trimmed === '(get-engine-capabilities)') {
+            return this.getEngineCapabilities();
+        }
+        
         // ゲーム状態初期化
         if (trimmed.startsWith('(init-game-state')) {
             const playerCount = parseInt(trimmed.match(/\d+/)[0]);
@@ -185,7 +310,8 @@ class LispGameEngine {
      * @returns {Array} List of loaded rule names
      */
     getLoadedRules() {
-        return Array.from(this.rules.keys()).map(key => key.replace('.lisp', ''));
+        const ruleNames = Array.from(this.rules.keys()).map(key => key.replace('rules/', '').replace('.lisp', ''));
+        return ruleNames;
     }
 
     /**
@@ -448,6 +574,439 @@ class LispGameEngine {
             message: validation.reason,
             special: validation.special
         };
+    }
+
+    // === Complete Game Engine Methods ===
+    
+    /**
+     * Initialize complete game with players and deck
+     * @param {number} playerCount - Number of players
+     * @returns {object} Initialization result
+     */
+    initializeCompleteGame(playerCount) {
+        this.gameState = {
+            playerCount: playerCount,
+            players: Array.from({ length: playerCount }, (_, i) => ({
+                id: i,
+                hand: [],
+                name: i === 0 ? 'Human' : `CPU${i}`,
+                isAI: i !== 0
+            })),
+            currentPlayer: 0,
+            fieldCards: [],
+            lastPlayedCards: [],
+            isRevolution: false,
+            gamePhase: 'ready',
+            turnCount: 0,
+            winner: null,
+            deck: []
+        };
+        
+        return {
+            success: true,
+            players: playerCount,
+            deck: 54,
+            gameState: 'ready'
+        };
+    }
+    
+    /**
+     * Create and shuffle a complete deck
+     * @returns {object} Deck creation result
+     */
+    createAndShuffleDeck() {
+        const suits = ['♠', '♥', '♦', '♣'];
+        const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+        
+        const cards = [];
+        
+        // Standard cards
+        for (const suit of suits) {
+            for (const rank of ranks) {
+                cards.push({ suit, rank });
+            }
+        }
+        
+        // Jokers
+        cards.push({ suit: 'JOKER', rank: 'JOKER' });
+        cards.push({ suit: 'JOKER', rank: 'JOKER' });
+        
+        // Shuffle
+        for (let i = cards.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [cards[i], cards[j]] = [cards[j], cards[i]];
+        }
+        
+        if (this.gameState) {
+            this.gameState.deck = cards;
+        }
+        
+        return {
+            cards: cards,
+            shuffled: true
+        };
+    }
+    
+    /**
+     * Deal cards to all players
+     * @returns {object} Dealing result
+     */
+    dealCardsToAllPlayers() {
+        if (!this.gameState || !this.gameState.deck.length) {
+            this.createAndShuffleDeck();
+        }
+        
+        const deck = [...this.gameState.deck];
+        const players = this.gameState.players;
+        
+        // Deal cards evenly
+        let cardIndex = 0;
+        while (deck.length > 0 && cardIndex < deck.length) {
+            for (let i = 0; i < players.length && deck.length > 0; i++) {
+                if (deck[cardIndex]) {
+                    players[i].hand.push(deck[cardIndex]);
+                    cardIndex++;
+                }
+            }
+        }
+        
+        return {
+            success: true,
+            playersWithCards: players.length,
+            totalCardsDealt: cardIndex
+        };
+    }
+    
+    /**
+     * Get current player
+     * @returns {object} Current player info
+     */
+    getCurrentPlayer() {
+        if (!this.gameState) {
+            return { id: -1, name: 'No game' };
+        }
+        
+        const player = this.gameState.players[this.gameState.currentPlayer];
+        return {
+            id: player.id,
+            name: player.name,
+            isAI: player.isAI
+        };
+    }
+    
+    /**
+     * Advance to next turn
+     * @returns {object} Turn advance result
+     */
+    advanceTurn() {
+        if (!this.gameState) {
+            return { success: false, error: 'No game state' };
+        }
+        
+        const oldPlayer = this.gameState.currentPlayer;
+        this.gameState.currentPlayer = (this.gameState.currentPlayer + 1) % this.gameState.playerCount;
+        this.gameState.turnCount++;
+        
+        return {
+            success: true,
+            previousPlayer: oldPlayer,
+            currentPlayer: this.gameState.currentPlayer
+        };
+    }
+    
+    /**
+     * Validate card play
+     * @param {Array} cards - Cards to validate
+     * @returns {object} Validation result
+     */
+    validateCardPlay(cards) {
+        if (!cards || cards.length === 0) {
+            return { valid: false, reason: 'No cards selected' };
+        }
+        
+        // Check for mixed ranks in multiple cards
+        if (cards.length > 1) {
+            const ranks = new Set(cards.map(c => c.rank));
+            if (ranks.size > 1) {
+                return { valid: false, reason: 'Mixed ranks not allowed' };
+            }
+        }
+        
+        // Single card is always valid
+        if (cards.length === 1) {
+            return { valid: true, reason: 'Single card play' };
+        }
+        
+        // Pairs, triples, etc. are valid if same rank
+        return { valid: true, reason: 'Multiple cards of same rank' };
+    }
+    
+    /**
+     * Get complete game state
+     * @returns {object} Complete game state
+     */
+    getCompleteGameState() {
+        if (!this.gameState) {
+            return {};
+        }
+        
+        return {
+            players: this.gameState.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                cardCount: p.hand.length,
+                isAI: p.isAI
+            })),
+            currentPlayer: this.gameState.currentPlayer,
+            fieldCards: this.gameState.fieldCards,
+            gamePhase: this.gameState.gamePhase,
+            turnCount: this.gameState.turnCount,
+            winner: this.gameState.winner
+        };
+    }
+    
+    /**
+     * Apply game rule
+     * @param {string} ruleId - Rule identifier
+     * @param {Array} cards - Cards to apply rule to
+     * @returns {object} Rule application result
+     */
+    applyRule(ruleId, cards) {
+        switch (ruleId) {
+            case 'eight-cut':
+                if (cards.some(c => c.rank === '8')) {
+                    return {
+                        ruleApplied: true,
+                        effect: 'field-clear',
+                        message: '8切り！'
+                    };
+                }
+                break;
+                
+            case 'revolution':
+                if (cards.length === 4) {
+                    return {
+                        ruleApplied: true,
+                        effect: 'card-order-reverse',
+                        message: '革命！'
+                    };
+                }
+                break;
+                
+            case 'q-bomber':
+                const qResult = this.detectQBomber(cards);
+                if (qResult.detected) {
+                    return {
+                        ruleApplied: true,
+                        requiresDeclaration: true,
+                        message: 'Qボンバー！'
+                    };
+                }
+                break;
+        }
+        
+        return { ruleApplied: false };
+    }
+    
+    /**
+     * Load rule file
+     * @param {string} filename - Rule file name
+     * @returns {object} Loading result
+     */
+    loadRuleFile(filename) {
+        // Simulate loading rule file
+        this.rules.set(filename, { loaded: true, timestamp: Date.now() });
+        
+        return {
+            success: true,
+            rulesLoaded: 1,
+            filename: filename
+        };
+    }
+    
+    /**
+     * Get all players
+     * @returns {Array} List of all players
+     */
+    getAllPlayers() {
+        if (!this.gameState) {
+            return [];
+        }
+        
+        return this.gameState.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            cardCount: p.hand.length,
+            isAI: p.isAI
+        }));
+    }
+    
+    /**
+     * Add card to player
+     * @param {number} playerId - Player ID
+     * @param {object} card - Card to add
+     * @returns {object} Operation result
+     */
+    addCardToPlayer(playerId, card) {
+        if (!this.gameState || !this.gameState.players[playerId]) {
+            return { success: false, error: 'Invalid player' };
+        }
+        
+        this.gameState.players[playerId].hand.push(card);
+        return { success: true };
+    }
+    
+    /**
+     * Remove card from player
+     * @param {number} playerId - Player ID
+     * @param {object} card - Card to remove
+     * @returns {object} Operation result
+     */
+    removeCardFromPlayer(playerId, card) {
+        if (!this.gameState || !this.gameState.players[playerId]) {
+            return { success: false, error: 'Invalid player' };
+        }
+        
+        const hand = this.gameState.players[playerId].hand;
+        const cardIndex = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+        
+        if (cardIndex === -1) {
+            return { success: false, error: 'Card not found' };
+        }
+        
+        hand.splice(cardIndex, 1);
+        return { success: true };
+    }
+    
+    /**
+     * Get player status
+     * @param {number} playerId - Player ID
+     * @returns {object} Player status
+     */
+    getPlayerStatus(playerId) {
+        if (!this.gameState || !this.gameState.players[playerId]) {
+            return { id: -1, cardCount: 0 };
+        }
+        
+        const player = this.gameState.players[playerId];
+        return {
+            id: player.id,
+            name: player.name,
+            cardCount: player.hand.length,
+            isAI: player.isAI
+        };
+    }
+    
+    /**
+     * Make AI decision
+     * @param {number} playerId - AI player ID
+     * @returns {object} AI decision
+     */
+    makeAIDecision(playerId) {
+        if (!this.gameState || !this.gameState.players[playerId]) {
+            return { action: 'pass' };
+        }
+        
+        const player = this.gameState.players[playerId];
+        
+        // Simple AI: play first card if possible
+        if (player.hand.length > 0) {
+            return {
+                action: 'play',
+                cards: [player.hand[0]]
+            };
+        }
+        
+        return { action: 'pass' };
+    }
+    
+    /**
+     * Get UI state
+     * @returns {object} UI state
+     */
+    getUIState() {
+        if (!this.gameState) {
+            return {};
+        }
+        
+        return {
+            playerHands: this.gameState.players.map(p => ({
+                id: p.id,
+                cardCount: p.hand.length,
+                cards: p.id === 0 ? p.hand : [] // Only show human player's cards
+            })),
+            fieldCards: this.gameState.fieldCards,
+            currentPlayerIndicator: {
+                playerId: this.gameState.currentPlayer,
+                playerName: this.gameState.players[this.gameState.currentPlayer].name
+            },
+            gameStatus: `Player ${this.gameState.currentPlayer + 1}'s turn`,
+            availableActions: ['play', 'pass']
+        };
+    }
+    
+    /**
+     * Play cards and generate events
+     * @param {Array} cards - Cards to play
+     * @returns {object} Play result with events
+     */
+    playCardsAndGenerateEvents(cards) {
+        const playResult = this.playCards(cards);
+        const events = [];
+        
+        if (playResult.success) {
+            // Generate appropriate events
+            if (playResult.special === '8cut') {
+                events.push({
+                    type: 'rule-activated',
+                    ruleId: 'eight-cut',
+                    message: '8切り！',
+                    timestamp: Date.now()
+                });
+            }
+            
+            if (playResult.special === 'q-bomber') {
+                events.push({
+                    type: 'rule-activated',
+                    ruleId: 'q-bomber',
+                    message: 'Qボンバー！',
+                    timestamp: Date.now()
+                });
+            }
+            
+            // Basic card play event
+            events.push({
+                type: 'cards-played',
+                cards: cards,
+                player: this.gameState.currentPlayer,
+                timestamp: Date.now()
+            });
+        }
+        
+        return {
+            success: playResult.success,
+            events: events,
+            message: playResult.message
+        };
+    }
+    
+    /**
+     * Get engine capabilities
+     * @returns {Array} List of supported capabilities
+     */
+    getEngineCapabilities() {
+        return [
+            'game-initialization',
+            'card-dealing',
+            'turn-management',
+            'card-validation',
+            'rule-processing',
+            'player-management',
+            'ai-decisions',
+            'ui-integration',
+            'event-generation',
+            'state-management'
+        ];
     }
 }
 

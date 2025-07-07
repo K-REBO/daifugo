@@ -5,8 +5,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('🎴 大富豪 - Lisp Rule Engine');
     console.log('🚀 Complete game system starting...');
     
-    // Initialize PWA
-    await initializePWA();
+    // Initialize PWA (temporarily disabled due to module loading issues)
+    // await initializePWA();
     
     // Load game modules
     await loadGameModules();
@@ -22,32 +22,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
- * Load all game modules
+ * Load all game modules for Lisp engine
  */
 async function loadGameModules() {
-    console.log('📦 Loading game modules...');
+    console.log('📦 Loading Lisp game modules...');
     
     try {
-        // Load modules in dependency order
-        await import('./card.js');
-        await import('./player.js');
-        await import('./game.js');
-        await import('./cpu-ai.js');
+        // Load core modules required by Lisp engine
+        await import('./lisp-engine.js');
+        await import('./lisp-game-controller.js');
         await import('./debug-system.js');
-        await import('./game-controller.js');
         await import('./rule-settings.js');
+        await import('./dynamic-rule-ui.js');
         
-        console.log('✅ All game modules loaded');
+        console.log('✅ All Lisp game modules loaded');
     } catch (error) {
-        console.error('❌ Failed to load game modules:', error);
+        console.error('❌ Failed to load Lisp game modules:', error);
     }
 }
 
 /**
- * Initialize game controller
+ * Initialize Lisp game controller
  */
 function initializeGameController() {
-    console.log('🎮 Initializing game controller...');
+    console.log('🎯 Initializing Lisp game controller...');
     
     // Initialize debug system first
     if (window.GameDebugSystemModule && window.GameDebugSystemModule.GameDebugSystem) {
@@ -66,16 +64,16 @@ function initializeGameController() {
         return;
     }
     
-    // Then create game controller (which depends on rule settings)
-    if (window.GameControllerModule && window.GameControllerModule.GameController) {
-        window.gameController = new window.GameControllerModule.GameController();
-        console.log('✅ Game controller initialized');
+    // Create Lisp game controller
+    if (window.LispGameControllerModule && window.LispGameControllerModule.LispGameController) {
+        window.gameController = new window.LispGameControllerModule.LispGameController();
+        console.log('✅ Lisp Game controller initialized');
     } else {
-        console.error('❌ GameControllerModule not found');
+        console.error('❌ LispGameControllerModule not found');
         return;
     }
     
-    console.log('✅ Game controller and rule settings ready');
+    console.log('✅ Lisp game controller and rule settings ready');
 }
 
 /**

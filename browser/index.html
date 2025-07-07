@@ -74,6 +74,29 @@
         </div>
     </div>
     
+    <!-- Service Worker Cleanup (temporary fix) -->
+    <script>
+        // Remove existing service workers that interfere with module loading
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                registrations.forEach(function(registration) {
+                    console.log('🧹 Unregistering Service Worker:', registration.scope);
+                    registration.unregister();
+                });
+            });
+        }
+        
+        // Clear caches
+        if ('caches' in window) {
+            caches.keys().then(function(cacheNames) {
+                cacheNames.forEach(function(cacheName) {
+                    console.log('🗑️ Deleting cache:', cacheName);
+                    caches.delete(cacheName);
+                });
+            });
+        }
+    </script>
+    
     <!-- Scripts -->
     <script type="module" src="./js/main.js"></script>
 </body>

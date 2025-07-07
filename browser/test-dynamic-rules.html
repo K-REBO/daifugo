@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 動的ルールUIテスト</title>
+    <link href="./css/output.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold text-center mb-8">🎨 動的ルールUIシステムテスト</h1>
+        
+        <!-- Rule Testing Controls -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">ルール発動テスト</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <button onclick="testRule('eight-cut')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    ✂️ 8切りテスト
+                </button>
+                <button onclick="testRule('revolution')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                    🔄 革命テスト
+                </button>
+                <button onclick="testRule('q-bomber')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
+                    💣 Qボンバーテスト
+                </button>
+                <button onclick="testRule('eleven-back')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                    🔙 11バックテスト
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <button onclick="testRule('three-spades')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">
+                    ♠️ 3返しテスト
+                </button>
+                <button onclick="testRule('stairs')" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg">
+                    📈 階段テスト
+                </button>
+                <button onclick="testRule('binding')" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg">
+                    🔗 縛りテスト
+                </button>
+            </div>
+        </div>
+        
+        <!-- Special UI Tests -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">特殊UIテスト</h2>
+            
+            <div class="flex flex-wrap gap-4">
+                <button onclick="showQBomberUI()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">
+                    💣 Qボンバー数字宣言UI
+                </button>
+                <button onclick="showMultipleNotifications()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                    📢 複数通知テスト
+                </button>
+                <button onclick="testAnimations()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg">
+                    ✨ アニメーションテスト
+                </button>
+                <button onclick="testSounds()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                    🔊 サウンドテスト
+                </button>
+            </div>
+        </div>
+        
+        <!-- Rule Settings Integration -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">ルール設定統合</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg mb-2">有効なルール:</h3>
+                    <div id="active-rules" class="bg-gray-700 p-4 rounded min-h-24">
+                        読み込み中...
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg mb-2">利用可能なルール:</h3>
+                    <div id="available-rules" class="bg-gray-700 p-4 rounded min-h-24">
+                        読み込み中...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex space-x-4">
+                <button onclick="refreshRuleStatus()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    🔄 ルール状況更新
+                </button>
+                <button onclick="openRuleSettings()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                    ⚙️ ルール設定を開く
+                </button>
+            </div>
+        </div>
+        
+        <!-- Notification Management -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">通知管理</h2>
+            
+            <div class="flex flex-wrap gap-4">
+                <button onclick="clearAllNotifications()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                    🗑️ 全通知クリア
+                </button>
+                <button onclick="showNotificationTypes()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded">
+                    🎨 通知タイプテスト
+                </button>
+                <button onclick="stressTestNotifications()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded">
+                    ⚡ ストレステスト
+                </button>
+            </div>
+            
+            <div class="mt-4">
+                <h3 class="text-lg mb-2">アクティブ通知数:</h3>
+                <div id="notification-count" class="text-2xl font-bold text-green-400">
+                    0
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Log -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">テストログ</h2>
+            <div id="test-log" class="bg-gray-900 p-4 rounded font-mono text-sm max-h-64 overflow-y-auto">
+                動的ルールUIシステム準備完了
+            </div>
+            <button onclick="clearLog()" class="mt-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                ログクリア
+            </button>
+        </div>
+        
+        <div class="text-center mt-8">
+            <a href="/" class="text-blue-400 hover:text-blue-300">🏠 メインページに戻る</a>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import modules
+        import './js/dynamic-rule-ui.js';
+        import './js/rule-settings.js';
+        
+        // Wait for system initialization
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                refreshRuleStatus();
+                addLog('動的ルールUIシステム初期化完了');
+            }, 1000);
+        });
+        
+        // Test functions
+        window.testRule = function(ruleId) {
+            const messages = {
+                'eight-cut': '✂️ 8切り！場をクリアしました',
+                'revolution': '🔄 革命！カードの強さが逆転しました',
+                'q-bomber': '💣 Qボンバー発動！数字を宣言してください',
+                'eleven-back': '🔙 11バック！弱いカードでもOK',
+                'three-spades': '♠️ スペード3でジョーカーを返しました',
+                'stairs': '📈 階段完成！連続数字です',
+                'binding': '🔗 縛り発動！同スート縛りです'
+            };
+            
+            const message = messages[ruleId] || `${ruleId} ルールが発動しました`;
+            
+            if (window.dynamicRuleUI) {
+                if (ruleId === 'q-bomber') {
+                    // Q-bomber with special UI
+                    window.dynamicRuleUI.showRuleNotification(ruleId, message, {
+                        type: 'special',
+                        duration: 2000
+                    });
+                    setTimeout(() => {
+                        window.dynamicRuleUI.showQBomberUI(3);
+                    }, 500);
+                } else {
+                    window.dynamicRuleUI.showRuleNotification(ruleId, message, {
+                        type: 'success',
+                        animation: 'bounce'
+                    });
+                }
+                
+                addLog(`ルールテスト実行: ${ruleId}`);
+                updateNotificationCount();
+            } else {
+                addLog('ERROR: 動的ルールUIが見つかりません');
+            }
+        };
+        
+        window.showQBomberUI = function() {
+            if (window.dynamicRuleUI) {
+                window.dynamicRuleUI.showQBomberUI(2);
+                addLog('Qボンバー数字宣言UI表示');
+            }
+        };
+        
+        window.showMultipleNotifications = function() {
+            const rules = ['eight-cut', 'revolution', 'eleven-back'];
+            rules.forEach((rule, index) => {
+                setTimeout(() => {
+                    testRule(rule);
+                }, index * 1000);
+            });
+        };
+        
+        window.testAnimations = function() {
+            const animations = ['bounce', 'slide', 'fade'];
+            animations.forEach((anim, index) => {
+                setTimeout(() => {
+                    window.dynamicRuleUI.showRuleNotification('stairs', 
+                        `アニメーション: ${anim}`, {
+                        type: 'info',
+                        animation: anim,
+                        duration: 2000
+                    });
+                }, index * 800);
+            });
+        };
+        
+        window.testSounds = function() {
+            const rules = ['eight-cut', 'revolution', 'q-bomber', 'eleven-back'];
+            rules.forEach((rule, index) => {
+                setTimeout(() => {
+                    window.dynamicRuleUI.playRuleSound(rule);
+                    addLog(`サウンドテスト: ${rule}`);
+                }, index * 500);
+            });
+        };
+        
+        window.showNotificationTypes = function() {
+            const types = [
+                { type: 'success', message: '成功通知テスト' },
+                { type: 'warning', message: '警告通知テスト' },
+                { type: 'error', message: 'エラー通知テスト' },
+                { type: 'info', message: '情報通知テスト' },
+                { type: 'special', message: '特殊通知テスト' }
+            ];
+            
+            types.forEach((item, index) => {
+                setTimeout(() => {
+                    window.dynamicRuleUI.showRuleNotification('binding', item.message, {
+                        type: item.type,
+                        duration: 3000
+                    });
+                }, index * 600);
+            });
+        };
+        
+        window.stressTestNotifications = function() {
+            addLog('ストレステスト開始: 10個の通知を連続表示');
+            
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    window.dynamicRuleUI.showRuleNotification('stairs', 
+                        `ストレステスト通知 #${i + 1}`, {
+                        type: 'info',
+                        duration: 2000
+                    });
+                    
+                    if (i === 9) {
+                        addLog('ストレステスト完了');
+                    }
+                }, i * 200);
+            }
+        };
+        
+        window.clearAllNotifications = function() {
+            if (window.dynamicRuleUI) {
+                window.dynamicRuleUI.clearAllNotifications();
+                addLog('全通知をクリアしました');
+                updateNotificationCount();
+            }
+        };
+        
+        window.refreshRuleStatus = function() {
+            if (window.ruleSettings) {
+                const activeRules = Array.from(window.ruleSettings.activeRules);
+                const availableRules = Array.from(window.ruleSettings.availableRules.keys());
+                
+                document.getElementById('active-rules').innerHTML = 
+                    activeRules.length > 0 
+                        ? activeRules.map(rule => `<span class="inline-block bg-green-600 text-white px-2 py-1 rounded mr-2 mb-2">${rule}</span>`).join('')
+                        : '<span class="text-gray-400">なし</span>';
+                
+                document.getElementById('available-rules').innerHTML = 
+                    availableRules.map(rule => `<span class="inline-block bg-blue-600 text-white px-2 py-1 rounded mr-2 mb-2">${rule}</span>`).join('');
+                
+                addLog(`ルール状況更新: ${activeRules.length}個有効, ${availableRules.length}個利用可能`);
+            } else {
+                addLog('ERROR: ルール設定が見つかりません');
+            }
+        };
+        
+        window.openRuleSettings = function() {
+            if (window.ruleSettings && window.ruleSettings.openModal) {
+                window.ruleSettings.openModal();
+                addLog('ルール設定モーダルを開きました');
+            } else {
+                addLog('ERROR: ルール設定モーダルが見つかりません');
+            }
+        };
+        
+        window.updateNotificationCount = function() {
+            if (window.dynamicRuleUI) {
+                const count = window.dynamicRuleUI.activeNotifications.length;
+                document.getElementById('notification-count').textContent = count;
+            }
+        };
+        
+        window.addLog = function(message) {
+            const log = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `\\n[${timestamp}] ${message}`;
+            log.scrollTop = log.scrollHeight;
+        };
+        
+        window.clearLog = function() {
+            document.getElementById('test-log').innerHTML = '動的ルールUIシステム準備完了';
+        };
+        
+        // Monitor notification count
+        setInterval(() => {
+            updateNotificationCount();
+        }, 1000);
+    </script>
+</body>
+</html>

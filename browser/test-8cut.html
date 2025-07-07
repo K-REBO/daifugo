@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8切りルールテスト</title>
+    <link href="./css/output.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">🔍 8切りルールテスト</h1>
+        
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">テスト結果</h2>
+            <div id="test-results" class="space-y-2 text-sm font-mono"></div>
+        </div>
+        
+        <div class="text-center">
+            <button onclick="test8CutRule()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg">
+                ✂️ 8切りルールをテスト
+            </button>
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="/" class="text-blue-400 hover:text-blue-300">🏠 メインページに戻る</a>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import necessary modules
+        import './js/card.js';
+        import './js/player.js';
+        import './js/game.js';
+        import './js/rule-settings.js';
+        
+        const testResults = document.getElementById('test-results');
+        
+        function log(message, type = 'info') {
+            const logLine = document.createElement('div');
+            logLine.className = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-gray-300';
+            logLine.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            testResults.appendChild(logLine);
+            console.log(message);
+        }
+        
+        window.test8CutRule = async function() {
+            log('🔍 8切りルールテストを開始...');
+            
+            try {
+                // Wait for modules to load
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Initialize rule settings
+                if (window.RuleSettingsModule) {
+                    window.ruleSettings = new window.RuleSettingsModule.RuleSettings();
+                    log('✅ ルール設定初期化完了');
+                } else {
+                    log('❌ ルール設定モジュールが見つかりません', 'error');
+                    return;
+                }
+                
+                // Create test game logic
+                const playerManager = new window.PlayerModule.PlayerManager(2);
+                const gameLogic = new window.GameModule.GameLogic(playerManager);
+                
+                log('✅ ゲームロジック作成完了');
+                
+                // Test 8-cut rule detection
+                const eightCard = new window.CardModule.Card('♠', '8');
+                const testCards = [eightCard];
+                
+                log(`🃏 テストカード: ${eightCard.suit}${eightCard.rank}`);
+                
+                // Check if has8Cut works
+                const has8Cut = gameLogic.has8Cut(testCards);
+                log(`8切り検出: ${has8Cut}`, has8Cut ? 'success' : 'error');
+                
+                // Check if rule is enabled
+                const ruleEnabled = gameLogic.isRuleEnabled('eight-cut');
+                log(`8切りルール有効: ${ruleEnabled}`, ruleEnabled ? 'success' : 'error');
+                
+                // Check validation
+                const validation = gameLogic.validatePlay(testCards);
+                log(`プレイ検証結果: ${JSON.stringify(validation)}`);
+                
+                if (validation.special === '8cut') {
+                    log('✅ 8切りルールが正しく動作しています！', 'success');
+                } else {
+                    log('❌ 8切りルールが動作していません', 'error');
+                    log(`期待値: special="8cut", 実際: special="${validation.special}"`, 'error');
+                }
+                
+                // Test actual play
+                gameLogic.fieldCards = [new window.CardModule.Card('♥', 'K')]; // Set field card
+                gameLogic.lastPlayedCards = [new window.CardModule.Card('♥', 'K')]; // Set last played
+                const currentPlayerBefore = gameLogic.playerManager.getCurrentPlayerIndex();
+                const playResult = gameLogic.playCards(testCards);
+                const currentPlayerAfter = gameLogic.playerManager.getCurrentPlayerIndex();
+                
+                log(`実際のプレイ結果: ${JSON.stringify(playResult)}`);
+                log(`プレイ前のプレイヤー: ${currentPlayerBefore}, プレイ後のプレイヤー: ${currentPlayerAfter}`);
+                
+                if (gameLogic.fieldCards.length === 0) {
+                    log('✅ フィールドが正しくクリアされました！', 'success');
+                } else {
+                    log('❌ フィールドがクリアされませんでした', 'error');
+                    log(`フィールドカード数: ${gameLogic.fieldCards.length}`, 'error');
+                }
+                
+                // Test turn continuation
+                if (currentPlayerBefore === currentPlayerAfter) {
+                    log('✅ 8切り後、同じプレイヤーが続行します！', 'success');
+                } else {
+                    log('❌ 8切り後、ターンが移ってしまいました', 'error');
+                    log(`期待: プレイヤー${currentPlayerBefore}継続, 実際: プレイヤー${currentPlayerAfter}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ テストエラー: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+        
+        log('8切りテストページ準備完了');
+    </script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lisp Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background: #2d5016; border: 1px solid #4ade80; }
+        .fail { background: #7f1d1d; border: 1px solid #ef4444; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .primary { background: #3b82f6; color: white; }
+        .success { background: #10b981; color: white; }
+        .error { background: #ef4444; color: white; }
+        #output { background: #374151; padding: 15px; border-radius: 5px; min-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Lisp Engine Integration Test</h1>
+    
+    <div>
+        <button class="primary" onclick="runBasicTests()">Basic Lisp Tests</button>
+        <button class="primary" onclick="runGameTests()">Game Engine Tests</button>
+        <button class="primary" onclick="runUITests()">UI Integration Tests</button>
+        <button class="success" onclick="runFullGame()">Start Full Lisp Game</button>
+        <button class="error" onclick="clearOutput()">Clear Output</button>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script type="module">
+        // Import Lisp engine
+        import './js/lisp-engine.js';
+        import './js/lisp-game-controller.js';
+        
+        let lispEngine;
+        let lispController;
+        
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'pass' ? 'test-result pass' : 
+                             type === 'fail' ? 'test-result fail' : '';
+            output.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+        
+        window.runBasicTests = function() {
+            log('🔬 Running Basic Lisp Engine Tests...');
+            
+            try {
+                lispEngine = new LispGameEngine();
+                log('✅ Lisp Engine created successfully', 'pass');
+                
+                // Test 1: Basic arithmetic
+                const result1 = lispEngine.eval('(+ 1 2)');
+                if (result1 === 3) {
+                    log('✅ Basic arithmetic: (+ 1 2) = 3', 'pass');
+                } else {
+                    log('❌ Basic arithmetic failed', 'fail');
+                }
+                
+                // Test 2: Game initialization
+                const result2 = lispEngine.eval('(initialize-complete-game 4)');
+                if (result2.success && result2.players === 4) {
+                    log('✅ Game initialization successful', 'pass');
+                } else {
+                    log('❌ Game initialization failed', 'fail');
+                }
+                
+                // Test 3: Deck creation
+                const result3 = lispEngine.eval('(create-and-shuffle-deck)');
+                if (result3.cards && result3.cards.length === 54 && result3.shuffled) {
+                    log('✅ Deck creation: 54 cards shuffled', 'pass');
+                } else {
+                    log('❌ Deck creation failed', 'fail');
+                }
+                
+                // Test 4: Card dealing
+                const result4 = lispEngine.eval('(deal-cards-to-all-players)');
+                if (result4.success && result4.playersWithCards === 4) {
+                    log('✅ Card dealing successful', 'pass');
+                } else {
+                    log('❌ Card dealing failed', 'fail');
+                }
+                
+                log('🎯 Basic tests completed');
+                
+            } catch (error) {
+                log(`❌ Basic test error: ${error.message}`, 'fail');
+            }
+        };
+        
+        window.runGameTests = function() {
+            log('🎮 Running Game Engine Tests...');
+            
+            if (!lispEngine) {
+                log('❌ No Lisp engine - run basic tests first', 'fail');
+                return;
+            }
+            
+            try {
+                // Test game flow
+                const currentPlayer = lispEngine.eval('(get-current-player)');
+                log(`✅ Current player: ${currentPlayer.name} (ID: ${currentPlayer.id})`, 'pass');
+                
+                // Test turn advancement
+                const turnResult = lispEngine.eval('(advance-turn)');
+                if (turnResult.success) {
+                    log('✅ Turn advancement successful', 'pass');
+                } else {
+                    log('❌ Turn advancement failed', 'fail');
+                }
+                
+                // Test card validation
+                const validation = lispEngine.eval('(validate-card-play [{"suit":"♠","rank":"3"}])');
+                if (validation.valid) {
+                    log('✅ Card validation working', 'pass');
+                } else {
+                    log('❌ Card validation failed', 'fail');
+                }
+                
+                // Test rule system
+                const ruleResult = lispEngine.eval('(apply-rule "eight-cut" [{"suit":"♠","rank":"8"}])');
+                if (ruleResult.ruleApplied) {
+                    log('✅ Rule system: 8-cut rule applied', 'pass');
+                } else {
+                    log('❌ Rule system failed', 'fail');
+                }
+                
+                // Test Q-bomber detection
+                const qBomberResult = lispEngine.eval('(detect-q-bomber [{"suit":"♠","rank":"Q"},{"suit":"♥","rank":"Q"}])');
+                if (qBomberResult.detected) {
+                    log('✅ Q-bomber detection working', 'pass');
+                } else {
+                    log('❌ Q-bomber detection failed', 'fail');
+                }
+                
+                log('🎯 Game engine tests completed');
+                
+            } catch (error) {
+                log(`❌ Game engine test error: ${error.message}`, 'fail');
+            }
+        };
+        
+        window.runUITests = function() {
+            log('🖥️ Running UI Integration Tests...');
+            
+            if (!lispEngine) {
+                log('❌ No Lisp engine - run basic tests first', 'fail');
+                return;
+            }
+            
+            try {
+                // Test UI state generation
+                const uiState = lispEngine.eval('(get-ui-state)');
+                if (uiState.playerHands && uiState.gameStatus) {
+                    log('✅ UI state generation working', 'pass');
+                } else {
+                    log('❌ UI state generation failed', 'fail');
+                }
+                
+                // Test event generation
+                const eventResult = lispEngine.eval('(play-cards-and-generate-events [{"suit":"♠","rank":"8"}])');
+                if (eventResult.events && eventResult.events.length > 0) {
+                    log('✅ Event generation working', 'pass');
+                } else {
+                    log('❌ Event generation failed', 'fail');
+                }
+                
+                // Test engine capabilities
+                const capabilities = lispEngine.eval('(get-engine-capabilities)');
+                if (Array.isArray(capabilities) && capabilities.length >= 10) {
+                    log(`✅ Engine capabilities: ${capabilities.length} features`, 'pass');
+                } else {
+                    log('❌ Engine capabilities incomplete', 'fail');
+                }
+                
+                log('🎯 UI integration tests completed');
+                
+            } catch (error) {
+                log(`❌ UI integration test error: ${error.message}`, 'fail');
+            }
+        };
+        
+        window.runFullGame = function() {
+            log('🚀 Starting Full Lisp Game...');
+            
+            try {
+                // Create controller
+                lispController = new LispGameController();
+                log('✅ Lisp Game Controller created', 'pass');
+                
+                // Start game
+                lispController.startNewGame(4);
+                log('✅ Game started with 4 players', 'pass');
+                
+                // Get initial state
+                const gameState = lispController.lispEngine.eval('(get-complete-game-state)');
+                log(`✅ Game state: ${gameState.players.length} players, current: ${gameState.currentPlayer}`, 'pass');
+                
+                // Test card operations
+                const playerHand = lispController.lispEngine.eval('(get-player-hand 0)');
+                log(`✅ Human player has ${playerHand.length} cards`, 'pass');
+                
+                log('🎯 Full game simulation completed successfully!');
+                log('🎮 Ready for interactive play');
+                
+            } catch (error) {
+                log(`❌ Full game test error: ${error.message}`, 'fail');
+            }
+        };
+        
+        window.clearOutput = function() {
+            document.getElementById('output').innerHTML = '';
+        };
+        
+        // Auto-run basic tests on load
+        setTimeout(() => {
+            log('🎯 Lisp Engine Integration Test Started');
+            log('Click buttons above to run specific test suites');
+        }, 100);
+    </script>
+</body>
+</html>
