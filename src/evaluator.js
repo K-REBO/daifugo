@@ -434,8 +434,8 @@ function createEnvironment() {
     if (typeof playerCount !== 'number' || playerCount < 2 || playerCount > 6) {
       throw new Error('init-game-state: player count must be between 2 and 6');
     }
-    // Return frozen immutable state
-    return Object.freeze(["game-state", playerCount, 0, null]);
+    // Return frozen immutable state with game data
+    return Object.freeze(["game-state", playerCount, 0, null, { consecutivePasses: 0 }]);
   });
 
   env.define('update-game-state', (state, action) => {
@@ -491,6 +491,81 @@ function createEnvironment() {
     }
     return state[2];
   });
+
+  // Turn Processing System Functions
+  env.define('process-turn', (state, action) => {
+    // Validate inputs
+    if (!Array.isArray(state) || state[0] !== "game-state") {
+      throw new Error('process-turn: invalid game state format');
+    }
+    if (!action || typeof action.type !== 'string') {
+      throw new Error('process-turn: action must have a type property');
+    }
+
+    const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = state;
+    const currentGameData = gameData || { consecutivePasses: 0 };
+
+    switch (action.type) {
+      case "play": {
+        // Reset consecutive passes on card play
+        const newGameData = { consecutivePasses: 0 };
+        const newState = [gameStateType, playerCount, currentPlayer, action.cards, newGameData];
+        return advanceTurn(newState);
+      }
+      
+      case "pass": {
+        // Increment consecutive passes
+        const newPassCount = currentGameData.consecutivePasses + 1;
+        const newGameData = { consecutivePasses: newPassCount };
+        
+        // Check if field should be cleared (all other players passed)
+        if (newPassCount >= playerCount - 1) {
+          // Clear field and reset passes
+          const clearedState = [gameStateType, playerCount, currentPlayer, null, { consecutivePasses: 0 }];
+          return advanceTurn(clearedState);
+        } else {
+          // Keep field, advance turn
+          const newState = [gameStateType, playerCount, currentPlayer, fieldCards, newGameData];
+          return advanceTurn(newState);
+        }
+      }
+      
+      default:
+        throw new Error(`process-turn: unknown action type '${action.type}'`);
+    }
+  });
+
+  env.define('advance-turn', (state) => {
+    if (!Array.isArray(state) || state[0] !== "game-state") {
+      throw new Error('advance-turn: invalid game state format');
+    }
+    
+    const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = state;
+    const nextPlayer = (currentPlayer + 1) % playerCount;
+    
+    return Object.freeze([gameStateType, playerCount, nextPlayer, fieldCards, gameData]);
+  });
+
+  env.define('should-clear-field', (state) => {
+    if (!Array.isArray(state) || state[0] !== "game-state") {
+      throw new Error('should-clear-field: invalid game state format');
+    }
+    
+    const [, playerCount, , , gameData] = state;
+    if (!gameData || typeof gameData.consecutivePasses !== 'number') {
+      return false;
+    }
+    
+    // Field should be cleared if all other players have passed
+    return gameData.consecutivePasses >= playerCount - 1;
+  });
+
+  // Helper function for internal use
+  function advanceTurn(state) {
+    const [gameStateType, playerCount, currentPlayer, fieldCards, gameData] = state;
+    const nextPlayer = (currentPlayer + 1) % playerCount;
+    return Object.freeze([gameStateType, playerCount, nextPlayer, fieldCards, gameData]);
+  }
 
   env.define('card-suit', (card) => {
     validateCard(card, 'card-suit');

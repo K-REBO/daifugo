@@ -251,7 +251,7 @@ describe('Pure Lisp Game Engine', () => {
 
     test('should initialize game state with default values', () => {
       const initialState = evaluate([sym('init-game-state'), 2], env);
-      expect(initialState).toEqual(["game-state", 2, 0, null]);
+      expect(initialState).toEqual(["game-state", 2, 0, null, { consecutivePasses: 0 }]);
     });
 
     test('should update game state with new current player', () => {
@@ -386,7 +386,7 @@ describe('Pure Lisp Game Engine', () => {
     });
 
     test('should track consecutive passes accurately', () => {
-      const initialState = evaluate([sym('init-game-state'), 3], env);
+      const initialState = evaluate([sym('init-game-state'), 4], env); // Use 4 players to avoid field clearing
       const passAction1 = { type: "pass", player: 0 };
       const passAction2 = { type: "pass", player: 1 };
       
