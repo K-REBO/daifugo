@@ -10,23 +10,23 @@
 
 (defun test-card-creation ()
   "カード作成のテスト"
-  (let ((card (daifugo-card-system:create-card 'A :spades)))
-    (and (eql (daifugo-card-system:card-rank card) 'A)
+  (let ((card (daifugo-card-system:create-card 'daifugo-card-system::A :spades)))
+    (and (eql (daifugo-card-system:card-rank card) 'daifugo-card-system::A)
          (eql (daifugo-card-system:card-suit card) :spades)
          (= (daifugo-card-system:card-strength card) 12))))
 
 (defun test-card-strength-calculation ()
   "カード強度計算のテスト"
   (and (= (daifugo-card-system:calculate-card-strength 3) 1)
-       (= (daifugo-card-system:calculate-card-strength 'A) 12)
+       (= (daifugo-card-system:calculate-card-strength 'daifugo-card-system::A) 12)
        (= (daifugo-card-system:calculate-card-strength 2) 13)
-       (= (daifugo-card-system:calculate-card-strength 'JOKER) 14)))
+       (= (daifugo-card-system:calculate-card-strength 'daifugo-card-system::JOKER) 14)))
 
 (defun test-deck-creation ()
   "デッキ作成のテスト"
   (let ((deck (daifugo-card-system:create-deck)))
     (and (= (length deck) 54)  ; 52枚 + ジョーカー2枚
-         (= (count 'JOKER deck :key #'daifugo-card-system:card-rank) 2))))
+         (= (count 'daifugo-card-system::JOKER deck :key #'daifugo-card-system:card-rank) 2))))
 
 (defun test-deck-shuffle ()
   "デッキシャッフルのテスト"
@@ -44,7 +44,7 @@
 
 (defun test-card-comparison ()
   "カード比較のテスト"
-  (let ((card1 (daifugo-card-system:create-card 'A :spades))
+  (let ((card1 (daifugo-card-system:create-card 'daifugo-card-system::A :spades))
         (card2 (daifugo-card-system:create-card 3 :hearts)))
     (and (> (daifugo-card-system:compare-cards card1 card2) 0)
          (< (daifugo-card-system:compare-cards card2 card1) 0)
@@ -52,14 +52,14 @@
 
 (defun test-joker-creation ()
   "ジョーカー作成のテスト"
-  (let ((joker (daifugo-card-system:create-card 'JOKER :joker)))
-    (and (eql (daifugo-card-system:card-rank joker) 'JOKER)
+  (let ((joker (daifugo-card-system:create-card 'daifugo-card-system::JOKER :joker)))
+    (and (eql (daifugo-card-system:card-rank joker) 'daifugo-card-system::JOKER)
          (eql (daifugo-card-system:card-suit joker) :joker)
          (= (daifugo-card-system:card-strength joker) 14))))
 
 (defun test-card-strength-order ()
   "カード強度順序のテスト"
-  (let ((ranks '(3 4 5 6 7 8 9 10 J Q K A 2 JOKER))
+  (let ((ranks '(3 4 5 6 7 8 9 10 daifugo-card-system::J daifugo-card-system::Q daifugo-card-system::K daifugo-card-system::A 2 daifugo-card-system::JOKER))
         (expected-strengths '(1 2 3 4 5 6 7 8 9 10 11 12 13 14)))
     (every (lambda (rank expected)
              (= (daifugo-card-system:calculate-card-strength rank) expected))
