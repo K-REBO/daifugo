@@ -4,9 +4,11 @@
   (:use :common-lisp)
   (:export #:card
            #:make-card
+           #:create-card
            #:card-rank
            #:card-suit
            #:card-strength
+           #:calculate-card-strength
            #:create-deck
            #:shuffle-deck
            #:deal-cards
@@ -29,7 +31,7 @@
     (otherwise 0)))
 
 ;;; カード作成
-(defun make-card (rank suit)
+(defun create-card (rank suit)
   "カードを作成する"
   (make-card :rank rank 
              :suit suit 
@@ -42,10 +44,10 @@
     ;; 通常のカード (52枚)
     (dolist (suit '(:spades :hearts :diamonds :clubs))
       (dolist (rank '(3 4 5 6 7 8 9 10 J Q K A 2))
-        (push (make-card rank suit) deck)))
+        (push (create-card rank suit) deck)))
     ;; ジョーカー (2枚)
-    (push (make-card 'JOKER :joker) deck)
-    (push (make-card 'JOKER :joker) deck)
+    (push (create-card 'JOKER :joker) deck)
+    (push (create-card 'JOKER :joker) deck)
     deck))
 
 ;;; デッキシャッフル

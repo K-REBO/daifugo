@@ -10,7 +10,7 @@
 
 (defun test-card-creation ()
   "カード作成のテスト"
-  (let ((card (daifugo-card-system:make-card 'A :spades)))
+  (let ((card (daifugo-card-system:create-card 'A :spades)))
     (and (eql (daifugo-card-system:card-rank card) 'A)
          (eql (daifugo-card-system:card-suit card) :spades)
          (= (daifugo-card-system:card-strength card) 12))))
@@ -44,15 +44,15 @@
 
 (defun test-card-comparison ()
   "カード比較のテスト"
-  (let ((card1 (daifugo-card-system:make-card 'A :spades))
-        (card2 (daifugo-card-system:make-card 3 :hearts)))
+  (let ((card1 (daifugo-card-system:create-card 'A :spades))
+        (card2 (daifugo-card-system:create-card 3 :hearts)))
     (and (> (daifugo-card-system:compare-cards card1 card2) 0)
          (< (daifugo-card-system:compare-cards card2 card1) 0)
          (= (daifugo-card-system:compare-cards card1 card1) 0))))
 
 (defun test-joker-creation ()
   "ジョーカー作成のテスト"
-  (let ((joker (daifugo-card-system:make-card 'JOKER :joker)))
+  (let ((joker (daifugo-card-system:create-card 'JOKER :joker)))
     (and (eql (daifugo-card-system:card-rank joker) 'JOKER)
          (eql (daifugo-card-system:card-suit joker) :joker)
          (= (daifugo-card-system:card-strength joker) 14))))
