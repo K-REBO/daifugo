@@ -173,35 +173,116 @@ src/
 
 #### 6.3.1 ログ記録API
 ```lisp
-(log-event :card-played :player player-id :cards cards)
-(log-state-snapshot game-state)
-(log-rule-trigger :rule-name 'kakumei :effect "革命発生")
-(export-game-log "game-20240708-001.log")
+;; イベントログ記録
+(log-event :card-played :player player-id :cards cards :timestamp (get-universal-time))
+(log-event :rule-triggered :rule 'kakumei :effect "革命発生" :game-state game-state)
+(log-event :turn-changed :from old-player :to new-player :direction direction)
+
+;; 状態スナップショット
+(log-state-snapshot game-state :turn turn-number :phase phase)
+
+;; ゲーム統計記録
+(log-game-statistics :game-id game-id :duration duration :winner winner :final-ranks ranks)
+
+;; ログ出力
+(export-game-log "logs/game-20240708-001.log" :format :json)
+(export-game-log "logs/game-20240708-001.txt" :format :human-readable)
 ```
 
 #### 6.3.2 ログ分析API
 ```lisp
+;; 統計分析
 (analyze-game-statistics log-file)
+(analyze-player-performance log-file player-id)
+(analyze-rule-effectiveness log-file rule-name)
+
+;; パターン分析
 (find-rule-usage-patterns log-file)
+(find-winning-strategies log-file)
+(find-game-balance-issues log-file)
+
+;; 異常検知
 (detect-game-anomalies log-file)
-(generate-replay-from-log log-file)
+(detect-infinite-loops log-file)
+(detect-rule-conflicts log-file)
+
+;; リプレイ生成
+(generate-replay-from-log log-file :output-format :interactive)
+(generate-replay-from-log log-file :output-format :batch)
+```
+
+#### 6.3.3 ログ設定
+```lisp
+;; ログレベル設定
+(set-log-level :debug)   ; :debug, :info, :warning, :error
+(set-log-output :file)   ; :file, :console, :both
+(set-log-rotation :daily) ; :daily, :hourly, :size-based
+
+;; ログフィルタ設定
+(add-log-filter :player-actions)
+(add-log-filter :rule-triggers)
+(remove-log-filter :state-snapshots)
 ```
 
 ### 6.4 自動テスタシステム
 
 #### 6.4.1 テスト実行API
 ```lisp
-(run-bulk-test :games 10000 :players 4 :rules '(kakumei 8kiri))
-(run-regression-test test-suite)
-(run-performance-test :duration 3600)
+;; 大量テスト実行
+(run-bulk-test :games 10000 :players 4 :rules '(kakumei 8kiri) :ai-types '(random greedy))
+(run-rule-combination-test :rules '(kakumei 8kiri kaidan) :games 1000)
+(run-player-count-test :min-players 2 :max-players 8 :games 500)
+
+;; 回帰テスト
+(run-regression-test test-suite :baseline-version "1.0.0")
+(run-unit-test-suite :module 'card-system)
+(run-integration-test-suite :components '(game-engine rule-engine))
+
+;; 性能テスト
+(run-performance-test :duration 3600 :target-tps 100)
+(run-memory-leak-test :games 10000)
+(run-stress-test :concurrent-games 50)
+
+;; ルール検証
 (validate-rule-interactions '(kakumei kaidan))
+(validate-rule-conflicts '(8kiri 11back))
+(validate-rule-completeness rule-set)
 ```
 
 #### 6.4.2 テスト結果分析
 ```lisp
+;; 基本統計分析
 (analyze-test-results test-results)
+(analyze-win-rate-distribution test-results)
+(analyze-game-duration-statistics test-results)
+
+;; バランス分析
 (detect-balance-issues test-results)
-(generate-test-report test-results)
+(detect-dominant-strategies test-results)
+(detect-useless-rules test-results)
+
+;; 品質分析
+(detect-bugs-from-test-results test-results)
+(detect-edge-cases test-results)
+(detect-performance-bottlenecks test-results)
+
+;; レポート生成
+(generate-test-report test-results :format :html)
+(generate-test-report test-results :format :json)
+(generate-test-summary test-results)
+```
+
+#### 6.4.3 テスト設定
+```lisp
+;; テスト環境設定
+(set-test-seed 12345)  ; 再現可能テストのためのシード
+(set-test-timeout 30)  ; テストタイムアウト（秒）
+(set-parallel-execution t)  ; 並列実行有効化
+
+;; AIプレイヤー設定
+(configure-ai-player :random :randomness 1.0)
+(configure-ai-player :greedy :aggression 0.8)
+(configure-ai-player :strategic :difficulty :hard)
 ```
 
 ## 7. JavaScript UI インターフェース
