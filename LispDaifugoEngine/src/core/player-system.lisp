@@ -4,11 +4,14 @@
   (:use :common-lisp)
   (:export #:player
            #:make-player
+           #:create-player
+           #:player-p
            #:player-id
            #:player-name
            #:player-hand
            #:player-rank
            #:player-type
+           #:player-ai-type
            #:create-players
            #:add-card-to-hand
            #:remove-card-from-hand
@@ -30,12 +33,22 @@
 (defun create-players (player-count)
   "指定された数のプレイヤーを作成する"
   (loop for i from 0 below player-count
-        collect (make-player :id i
-                             :name (format nil "Player~A" i)
-                             :hand nil
-                             :rank :heimin
-                             :type :human
-                             :ai-type nil)))
+        collect (create-player :id i
+                               :name (format nil "Player~A" i)
+                               :hand nil
+                               :rank :heimin
+                               :type :human
+                               :ai-type nil)))
+
+;;; プレイヤーのデフォルト値設定
+(defun create-player (&key id name (hand nil) (rank :heimin) (type :human) (ai-type nil))
+  "プレイヤーを作成する（デフォルト値付き）"
+  (make-player :id id
+               :name name
+               :hand hand
+               :rank rank
+               :type type
+               :ai-type ai-type))
 
 ;;; 手札にカード追加
 (defun add-card-to-hand (player card)

@@ -20,7 +20,7 @@
 
 (defun test-player-hand-management ()
   "プレイヤー手札管理のテスト"
-  (let ((player (daifugo-player-system:make-player :id 0 :name "Test Player"))
+  (let ((player (daifugo-player-system:create-player :id 0 :name "Test Player"))
         (card (daifugo-card-system:create-card 'daifugo-card-system::A :spades)))
     (and (daifugo-player-system:hand-empty-p player)
          (progn
@@ -33,7 +33,7 @@
 
 (defun test-player-rank-system ()
   "プレイヤー階級システムのテスト"
-  (let ((player (daifugo-player-system:make-player :id 0 :name "Test Player")))
+  (let ((player (daifugo-player-system:create-player :id 0 :name "Test Player")))
     (and (eql (daifugo-player-system:player-rank player) :heimin)
          (progn
            (setf (daifugo-player-system:player-rank player) :daifugo)
@@ -41,8 +41,8 @@
 
 (defun test-player-type-system ()
   "プレイヤータイプシステムのテスト"
-  (let ((human-player (daifugo-player-system:make-player :id 0 :name "Human" :type :human))
-        (ai-player (daifugo-player-system:make-player :id 1 :name "AI" :type :ai :ai-type :random)))
+  (let ((human-player (daifugo-player-system:create-player :id 0 :name "Human" :type :human))
+        (ai-player (daifugo-player-system:create-player :id 1 :name "AI" :type :ai :ai-type :random)))
     (and (eql (daifugo-player-system:player-type human-player) :human)
          (eql (daifugo-player-system:player-type ai-player) :ai)
          (eql (daifugo-player-system:player-ai-type ai-player) :random)
@@ -57,7 +57,7 @@
 
 (defun test-multiple-cards-management ()
   "複数カード管理のテスト"
-  (let ((player (daifugo-player-system:make-player :id 0 :name "Test Player"))
+  (let ((player (daifugo-player-system:create-player :id 0 :name "Test Player"))
         (cards (list (daifugo-card-system:create-card 'daifugo-card-system::A :spades)
                      (daifugo-card-system:create-card 'daifugo-card-system::K :hearts)
                      (daifugo-card-system:create-card 3 :diamonds))))
