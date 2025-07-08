@@ -1,3 +1,21 @@
+// Browser-compatible imports
+let parse, evaluate, createEnvironment;
+
+// Environment detection and dynamic imports
+if (typeof window !== 'undefined') {
+    // Browser environment - use global objects or create fallbacks
+    parse = window.parse || function(expr) { return expr; };
+    evaluate = window.evaluate || function(expr, env) { return expr; };
+    createEnvironment = window.createEnvironment || function() { return {}; };
+} else {
+    // Node.js environment - use require
+    const parserModule = require('../../src/parser');
+    const evaluatorModule = require('../../src/evaluator');
+    parse = parserModule.parse;
+    evaluate = evaluatorModule.evaluate;
+    createEnvironment = evaluatorModule.createEnvironment;
+}
+
 /**
  * Lisp Game Engine
  * JavaScript-Lisp Bridge Implementation
@@ -9,6 +27,7 @@ class LispGameEngine {
         this.gameState = null;
         this.rules = new Map();
         this.facts = new Map();
+        this.lispEnv = createEnvironment(); // Lisp環境を初期化
         
         console.log('🎯 Lisp Game Engine initialized');
     }
@@ -27,6 +46,16 @@ class LispGameEngine {
         // 算術演算
         if (trimmed === '(+ 1 2)') {
             return 3;
+        }
+        
+        // Card strength comparison
+        if (trimmed.startsWith('(is-stronger')) {
+            const match = trimmed.match(/\(is-stronger "([^"]*)" "([^"]*)"\)/);
+            if (match) {
+                const cardA = match[1];
+                const cardB = match[2];
+                return this.isStronger(cardA, cardB);
+            }
         }
         
         // Complete game initialization
@@ -416,10 +445,21 @@ class LispGameEngine {
         
         // カードプレイバリデーション
         if (trimmed.startsWith('(validate-play')) {
-            const cardsMatch = trimmed.match(/\[.*\]/);
+            const cardsMatch = trimmed.match(/\(validate-play (.+)\)/);
             if (cardsMatch) {
-                const cards = JSON.parse(cardsMatch[0]);
-                return this.validatePlay(cards);
+                try {
+                    let jsonString = cardsMatch[1];
+                    if (jsonString.startsWith("'")) {
+                        jsonString = jsonString.slice(1); // 先頭のクォートを除去
+                    }
+                    // シングルクォートをダブルクォートに変換
+                    jsonString = jsonString.replace(/'/g, '"');
+                    const cards = JSON.parse(jsonString);
+                    return this.validatePlay(cards);
+                } catch (e) {
+                    console.error('JSON parse error in validate-play:', e.message);
+                    return { valid: false, error: e.message };
+                }
             }
         }
         
@@ -509,32 +549,52 @@ class LispGameEngine {
         }
 
         if (trimmed.startsWith('(set-field-cards')) {
-            const cardsMatch = trimmed.match(/\(set-field-cards (.*)\)/);
+            const cardsMatch = trimmed.match(/\(set-field-cards (.+)\)/);
             if (cardsMatch) {
-                // JSON.parseは文字列リテラルを期待するため、シングルクォートをダブルクォートに変換
-                const jsonString = cardsMatch[1].replace(/'/g, '"');
-                const cards = JSON.parse(jsonString);
-                if (this.gameState) this.gameState.fieldCards = cards;
-                return { success: true };
+                try {
+                    // Lispのクォート記法を処理
+                    let jsonString = cardsMatch[1];
+                    if (jsonString.startsWith("'")) {
+                        jsonString = jsonString.slice(1); // 先頭のクォートを除去
+                    }
+                    // シングルクォートをダブルクォートに変換
+                    jsonString = jsonString.replace(/'/g, '"');
+                    const cards = JSON.parse(jsonString);
+                    if (this.gameState) this.gameState.fieldCards = cards;
+                    return { success: true };
+                } catch (e) {
+                    console.error('JSON parse error in set-field-cards:', e.message);
+                    return { success: false, error: e.message };
+                }
             }
         }
 
         if (trimmed.startsWith('(process-play')) {
-            const playMatch = trimmed.match(/\(process-play (.*)\)/);
+            const playMatch = trimmed.match(/\(process-play (.+)\)/);
             if (playMatch) {
-                // JSON.parseは文字列リテラルを期待するため、シングルクォートをダブルクォートに変換
-                const jsonString = playMatch[1].replace(/'/g, '"');
-                const play = JSON.parse(jsonString);
-                if (play.action === 'pass') {
-                    this.passTurn();
-                } else {
-                    this.playCardsAndResetPass(play.cards);
+                try {
+                    // Lispのクォート記法を処理
+                    let jsonString = playMatch[1];
+                    if (jsonString.startsWith("'")) {
+                        jsonString = jsonString.slice(1); // 先頭のクォートを除去
+                    }
+                    // シングルクォートをダブルクォートに変換
+                    jsonString = jsonString.replace(/'/g, '"');
+                    const play = JSON.parse(jsonString);
+                    if (play.action === 'pass') {
+                        this.passTurn();
+                    } else {
+                        this.playCardsAndResetPass(play.cards);
+                    }
+                    // Check if round ends
+                    if (this.gameState.consecutivePasses >= this.gameState.playerCount - 1) {
+                        this.startNewRound();
+                    }
+                    return { success: true };
+                } catch (e) {
+                    console.error('JSON parse error in process-play:', e.message);
+                    return { success: false, error: e.message };
                 }
-                // Check if round ends
-                if (this.gameState.consecutivePasses >= this.gameState.playerCount - 1) {
-                    this.startNewRound();
-                }
-                return { success: true };
             }
         }
         
@@ -2429,6 +2489,30 @@ class LispGameEngine {
             threatLevel: highThreat ? 'critical' : 'normal',
             dangerousOpponents: opponentAnalysis.opponentCardCounts.filter(opp => opp.cards <= 2)
         };
+    }
+    
+    /**
+     * Compare card strength in Daifugo
+     * @param {string} cardA - First card rank
+     * @param {string} cardB - Second card rank
+     * @returns {boolean} True if cardB is stronger than cardA
+     */
+    isStronger(cardA, cardB) {
+        const cardOrder = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'JOKER'];
+        const revolutionOrder = ['JOKER', '2', 'A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3'];
+        
+        const isRevolution = this.gameState && this.gameState.isRevolution;
+        const order = isRevolution ? revolutionOrder : cardOrder;
+        
+        const indexA = order.indexOf(cardA);
+        const indexB = order.indexOf(cardB);
+        
+        // Handle unknown cards
+        if (indexA === -1 || indexB === -1) {
+            return false;
+        }
+        
+        return indexB > indexA;
     }
 }
 

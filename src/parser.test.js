@@ -1,17 +1,18 @@
 const { parse } = require('./parser');
+const { Symbol } = require('./symbol');
 
 describe('S-expression Parser', () => {
   test('parses simple atom', () => {
     expect(parse('42')).toEqual(42);
-    expect(parse('foo')).toEqual('foo');
+    expect(parse('foo')).toEqual(new Symbol('foo'));
   });
 
   test('parses simple list', () => {
-    expect(parse('(+ 1 2)')).toEqual(['+', 1, 2]);
+    expect(parse('(+ 1 2)')).toEqual([new Symbol('+'), 1, 2]);
   });
 
   test('parses nested lists', () => {
-    expect(parse('(+ (* 2 3) 4)')).toEqual(['+', ['*', 2, 3], 4]);
+    expect(parse('(+ (* 2 3) 4)')).toEqual([new Symbol('+'), [new Symbol('*'), 2, 3], 4]);
   });
 
   test('parses empty list', () => {
@@ -24,7 +25,7 @@ describe('S-expression Parser', () => {
   });
 
   test('handles whitespace', () => {
-    expect(parse('  (  +   1   2  )  ')).toEqual(['+', 1, 2]);
+    expect(parse('  (  +   1   2  )  ')).toEqual([new Symbol('+'), 1, 2]);
   });
 
   test('throws error for unmatched parentheses', () => {

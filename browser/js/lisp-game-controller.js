@@ -5,7 +5,20 @@
 
 class LispGameController {
   constructor() {
-    this.lispEngine = new LispGameEngine();
+    // Initialize Lisp Engine with fallback
+    try {
+      if (typeof window !== 'undefined' && window.LispGameEngine) {
+        this.lispEngine = new window.LispGameEngine();
+        console.log('✅ LispGameEngine initialized successfully');
+      } else {
+        console.warn('⚠️ LispGameEngine not available, using fallback');
+        this.lispEngine = this.createFallbackEngine();
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize LispGameEngine:', error);
+      this.lispEngine = this.createFallbackEngine();
+    }
+    
     this.gameState = 'menu'; // 'menu', 'playing', 'finished'
     this.selectedCards = [];
     this.humanPlayerId = 0;
@@ -13,6 +26,19 @@ class LispGameController {
     
     this.initializeUI();
     console.log('🎯 Lisp Game Controller initialized');
+  }
+
+  /**
+   * Create fallback engine for when LispGameEngine is not available
+   */
+  createFallbackEngine() {
+    return {
+      eval: (expr) => {
+        console.log(`📝 Fallback eval: ${expr}`);
+        return { success: false, error: 'Fallback engine' };
+      },
+      gameState: null
+    };
   }
 
   /**
@@ -197,15 +223,22 @@ class LispGameController {
       return;
     }
 
+    // Clear any existing content and create button
+    const existingButtons = gameStatus.querySelectorAll('button');
+    existingButtons.forEach(btn => btn.remove());
+
     const startButton = document.createElement('button');
     startButton.textContent = '🎮 ゲーム開始 (Lisp Engine)';
-    startButton.className = 'button-primary mt-4';
+    startButton.className = 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 cursor-pointer';
     startButton.id = 'start-game-button';
     
-    startButton.addEventListener('click', () => this.startNewGame());
+    startButton.addEventListener('click', () => {
+      console.log('🎮 Start button clicked');
+      this.startNewGame();
+    });
     
     gameStatus.appendChild(startButton);
-    console.log('✅ Lisp start game button created');
+    console.log('✅ Lisp start game button created and added to DOM');
   }
 
   /**
@@ -236,6 +269,33 @@ class LispGameController {
         }
       });
     }
+    
+    // Add dynamic rule loader button
+    this.createRuleLoaderButton();
+  }
+
+  /**
+   * Create dynamic rule loader button
+   */
+  createRuleLoaderButton() {
+    const settingsPanel = document.getElementById('settings-panel');
+    if (!settingsPanel) return;
+    
+    const ruleLoaderButton = document.createElement('button');
+    ruleLoaderButton.textContent = '🔧 ルール管理';
+    ruleLoaderButton.className = 'button-secondary mt-2 block w-full';
+    ruleLoaderButton.id = 'rule-loader-button';
+    
+    ruleLoaderButton.addEventListener('click', () => {
+      if (window.dynamicRuleLoader) {
+        window.dynamicRuleLoader.show();
+      } else {
+        console.error('Dynamic rule loader not initialized');
+      }
+    });
+    
+    settingsPanel.appendChild(ruleLoaderButton);
+    console.log('🔧 Rule loader button created');
   }
 
   /**
@@ -386,7 +446,16 @@ class LispGameController {
         
         this.clearSelectedCards();
         this.updateFullUI();
-        this.advanceToNextTurn();
+        
+        // Handle special rule effects
+        if (specialResult.special === '8cut') {
+          // 8切り: 場をクリアして出した人からスタート
+          this.clearField();
+          this.showMessage('8切りで場がクリアされました！');
+          // 現在のプレイヤー（出した人）はそのままで次のターン開始
+        } else {
+          this.advanceToNextTurn();
+        }
         
         // Process CPU turns
         setTimeout(() => {

@@ -16,7 +16,7 @@ describe('Pure Lisp Game Engine', () => {
       // Test that functions are now available
       const deck = evaluate([sym('create-deck')], env);
       expect(Array.isArray(deck)).toBe(true);
-      expect(deck.length).toBe(4); // Simplified deck for now
+      expect(deck.length).toBe(54); // Full deck with jokers
     });
 
     test('should load card comparison from Lisp file', () => {
@@ -103,10 +103,9 @@ describe('Pure Lisp Game Engine', () => {
 
     test('should validate hand types in Lisp', () => {
       const card5a = evaluate([sym('create-card'), '♠', '5'], env);
-      const card5b = evaluate([sym('create-card'), '♥', '5'], env);
-      const pair = [card5a, card5b];
+      const singleCard = [card5a];
       
-      const handType = evaluate([sym('validate-hand-type'), [sym('quote'), pair]], env);
+      const handType = evaluate([sym('validate-hand-type'), [sym('quote'), singleCard]], env);
       expect(handType[0]).toBe("single"); // 簡素化されたバージョンではsingleのみ
     });
 
@@ -240,6 +239,230 @@ describe('Pure Lisp Game Engine', () => {
     });
   });
 
+  describe('Phase 7.4: Advanced Play Validation System', () => {
+    beforeEach(() => {
+      evaluate([sym('load'), 'card-operations.lisp'], env);
+      evaluate([sym('load'), 'card-comparison.lisp'], env);
+      evaluate([sym('load'), 'game-logic.lisp'], env);
+    });
+
+    test('should validate single card plays with comprehensive rules', () => {
+      // This test should initially fail because comprehensive validation isn't implemented
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const fieldCards = [evaluate([sym('create-card'), '♥', '6'], env)];
+      const gameStateWithField = evaluate([sym('update-game-state-enhanced'), 
+        [sym('quote'), gameState], 
+        [sym('quote'), { type: 'set-field-cards', cards: fieldCards }]
+      ], env);
+      
+      // Test valid single card
+      const validCard = [evaluate([sym('create-card'), '♠', '8'], env)];
+      const validResult = evaluate([sym('validate-play-comprehensive'), 
+        [sym('quote'), gameStateWithField], 
+        [sym('quote'), validCard]
+      ], env);
+      
+      expect(validResult.valid).toBe(true);
+      expect(validResult.reason).toBe('single-card-valid');
+      expect(validResult.cardType).toBe('single');
+    });
+
+    test('should validate pair plays with strict requirements', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const fieldPair = [
+        evaluate([sym('create-card'), '♥', '7'], env),
+        evaluate([sym('create-card'), '♦', '7'], env)
+      ];
+      const gameStateWithField = evaluate([sym('update-game-state-enhanced'),
+        [sym('quote'), gameState],
+        [sym('quote'), { type: 'set-field-cards', cards: fieldPair }]
+      ], env);
+      
+      // Test valid pair
+      const validPair = [
+        evaluate([sym('create-card'), '♠', '9'], env),
+        evaluate([sym('create-card'), '♣', '9'], env)
+      ];
+      const validResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameStateWithField],
+        [sym('quote'), validPair]
+      ], env);
+      
+      expect(validResult.valid).toBe(true);
+      expect(validResult.cardType).toBe('pair');
+      expect(validResult.strength).toBeGreaterThan(0);
+    });
+
+    test('should validate triple plays with sequence requirements', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const fieldTriple = [
+        evaluate([sym('create-card'), '♥', '5'], env),
+        evaluate([sym('create-card'), '♦', '5'], env),
+        evaluate([sym('create-card'), '♠', '5'], env)
+      ];
+      const gameStateWithField = evaluate([sym('update-game-state-enhanced'),
+        [sym('quote'), gameState],
+        [sym('quote'), { type: 'set-field-cards', cards: fieldTriple }]
+      ], env);
+      
+      const validTriple = [
+        evaluate([sym('create-card'), '♥', 'Q'], env),
+        evaluate([sym('create-card'), '♦', 'Q'], env),
+        evaluate([sym('create-card'), '♠', 'Q'], env)
+      ];
+      const validResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameStateWithField],
+        [sym('quote'), validTriple]
+      ], env);
+      
+      expect(validResult.valid).toBe(true);
+      expect(validResult.cardType).toBe('triple');
+    });
+
+    test('should validate sequence plays with complex rules', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const fieldSequence = [
+        evaluate([sym('create-card'), '♥', '4'], env),
+        evaluate([sym('create-card'), '♦', '5'], env),
+        evaluate([sym('create-card'), '♠', '6'], env)
+      ];
+      const gameStateWithField = evaluate([sym('update-game-state-enhanced'),
+        [sym('quote'), gameState],
+        [sym('quote'), { type: 'set-field-cards', cards: fieldSequence }]
+      ], env);
+      
+      const validSequence = [
+        evaluate([sym('create-card'), '♥', '7'], env),
+        evaluate([sym('create-card'), '♦', '8'], env),
+        evaluate([sym('create-card'), '♠', '9'], env)
+      ];
+      const validResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameStateWithField],
+        [sym('quote'), validSequence]
+      ], env);
+      
+      expect(validResult.valid).toBe(true);
+      expect(validResult.cardType).toBe('sequence');
+      expect(validResult.sequenceLength).toBe(3);
+    });
+
+    test('should reject mismatched card type plays', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      const fieldPair = [
+        evaluate([sym('create-card'), '♥', '7'], env),
+        evaluate([sym('create-card'), '♦', '7'], env)
+      ];
+      const gameStateWithField = evaluate([sym('update-game-state-enhanced'),
+        [sym('quote'), gameState],
+        [sym('quote'), { type: 'set-field-cards', cards: fieldPair }]
+      ], env);
+      
+      // Try to play single card against pair field
+      const singleCard = [evaluate([sym('create-card'), '♠', 'A'], env)];
+      const invalidResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameStateWithField],
+        [sym('quote'), singleCard]
+      ], env);
+      
+      expect(invalidResult.valid).toBe(false);
+      expect(invalidResult.reason).toBe('card-type-mismatch');
+    });
+
+    test('should handle special card validation (jokers, revolution)', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Test joker play
+      const joker = [evaluate([sym('create-joker')], env)];
+      const jokerResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameState],
+        [sym('quote'), joker]
+      ], env);
+      
+      expect(jokerResult.valid).toBe(true);
+      expect(jokerResult.special).toBe('joker');
+      expect(jokerResult.alwaysValid).toBe(true);
+    });
+
+    test('should validate plays in revolution mode', () => {
+      const revolutionState = evaluate([sym('init-game-state'), 4], env);
+      const revolutionGameState = evaluate([sym('update-game-state-enhanced'),
+        [sym('quote'), revolutionState],
+        [sym('quote'), { type: 'set-revolution', active: true }]
+      ], env);
+      
+      const fieldCards = [evaluate([sym('create-card'), '♥', 'K'], env)];
+      const gameStateWithField = evaluate([sym('update-game-state-enhanced'),
+        [sym('quote'), revolutionGameState],
+        [sym('quote'), { type: 'set-field-cards', cards: fieldCards }]
+      ], env);
+      
+      // In revolution, 3 should beat K
+      const lowCard = [evaluate([sym('create-card'), '♠', '3'], env)];
+      const revolutionResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameStateWithField],
+        [sym('quote'), lowCard]
+      ], env);
+      
+      expect(revolutionResult.valid).toBe(true);
+      expect(revolutionResult.revolutionMode).toBe(true);
+    });
+
+    test('should validate plays with turn order restrictions', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Set specific player turn
+      const gameStatePlayer2 = evaluate([sym('update-game-state-enhanced'),
+        [sym('quote'), gameState],
+        [sym('quote'), { type: 'set-current-player', player: 2 }]
+      ], env);
+      
+      const cards = [evaluate([sym('create-card'), '♠', '5'], env)];
+      
+      // Validate that only current player can play
+      const validationPlayer2 = evaluate([sym('validate-play-with-turn'),
+        [sym('quote'), gameStatePlayer2],
+        [sym('quote'), cards],
+        2  // Playing as player 2
+      ], env);
+      
+      const validationPlayer1 = evaluate([sym('validate-play-with-turn'),
+        [sym('quote'), gameStatePlayer2],
+        [sym('quote'), cards],
+        1  // Playing as player 1 (wrong turn)
+      ], env);
+      
+      expect(validationPlayer2.valid).toBe(true);
+      expect(validationPlayer1.valid).toBe(false);
+      expect(validationPlayer1.reason).toBe('not-your-turn');
+    });
+
+    test('should provide detailed validation error messages', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Test various error conditions
+      const emptyCards = [];
+      const emptyResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameState],
+        [sym('quote'), emptyCards]
+      ], env);
+      
+      expect(emptyResult.valid).toBe(false);
+      expect(emptyResult.reason).toBe('no-cards-played');
+      expect(emptyResult.errorCode).toBe('EMPTY_PLAY');
+      
+      // Test invalid card structure
+      const invalidCards = [['not-a-card', 'invalid', 'structure']];
+      const invalidResult = evaluate([sym('validate-play-comprehensive'),
+        [sym('quote'), gameState],
+        [sym('quote'), invalidCards]
+      ], env);
+      
+      expect(invalidResult.valid).toBe(false);
+      expect(invalidResult.reason).toBe('invalid-card-structure');
+      expect(invalidResult.errorCode).toBe('MALFORMED_CARDS');
+    });
+  });
+
   describe('Pure Lisp Game State Management', () => {
     test('should initialize game state with player count', () => {
       const initialState = evaluate([sym('init-game-state'), 4], env);
@@ -257,7 +480,7 @@ describe('Pure Lisp Game Engine', () => {
     test('should update game state with new current player', () => {
       const initialState = evaluate([sym('init-game-state'), 4], env);
       const action = { type: "next-player" };
-      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), action]], env);
+      const updatedState = evaluate([sym('update-game-state-enhanced'), [sym('quote'), initialState], [sym('quote'), action]], env);
       
       expect(updatedState[0]).toBe("game-state");
       expect(updatedState[1]).toBe(4); // player count unchanged
@@ -269,7 +492,7 @@ describe('Pure Lisp Game Engine', () => {
       const initialState = evaluate([sym('init-game-state'), 4], env);
       const newFieldCards = [evaluate([sym('create-card'), '♠', 'K'], env)];
       const action = { type: "set-field", cards: newFieldCards };
-      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), action]], env);
+      const updatedState = evaluate([sym('update-game-state-enhanced'), [sym('quote'), initialState], [sym('quote'), action]], env);
       
       expect(updatedState[0]).toBe("game-state");
       expect(updatedState[1]).toBe(4);
@@ -282,8 +505,8 @@ describe('Pure Lisp Game Engine', () => {
       const action1 = { type: "next-player" };
       const action2 = { type: "next-player" };
       
-      const state1 = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), action1]], env);
-      const state2 = evaluate([sym('update-game-state'), [sym('quote'), state1], [sym('quote'), action2]], env);
+      const state1 = evaluate([sym('update-game-state-enhanced'), [sym('quote'), initialState], [sym('quote'), action1]], env);
+      const state2 = evaluate([sym('update-game-state-enhanced'), [sym('quote'), state1], [sym('quote'), action2]], env);
       
       expect(state2[2]).toBe(2); // current player should be 2
     });
@@ -293,7 +516,7 @@ describe('Pure Lisp Game Engine', () => {
       // Start with player 2
       const startState = ["game-state", 3, 2, null];
       const action = { type: "next-player" };
-      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), startState], [sym('quote'), action]], env);
+      const updatedState = evaluate([sym('update-game-state-enhanced'), [sym('quote'), startState], [sym('quote'), action]], env);
       
       expect(updatedState[2]).toBe(0); // should wrap to player 0
     });
@@ -314,10 +537,10 @@ describe('Pure Lisp Game Engine', () => {
       const setAction = { type: "set-field", cards: fieldCards };
       const resetAction = { type: "reset-field" };
       
-      const stateWithField = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), setAction]], env);
+      const stateWithField = evaluate([sym('update-game-state-enhanced'), [sym('quote'), initialState], [sym('quote'), setAction]], env);
       expect(stateWithField[3]).toEqual(fieldCards);
       
-      const resetState = evaluate([sym('update-game-state'), [sym('quote'), stateWithField], [sym('quote'), resetAction]], env);
+      const resetState = evaluate([sym('update-game-state-enhanced'), [sym('quote'), stateWithField], [sym('quote'), resetAction]], env);
       expect(resetState[3]).toBe(null);
     });
 
@@ -325,8 +548,118 @@ describe('Pure Lisp Game Engine', () => {
       const initialState = evaluate([sym('init-game-state'), 4], env);
       const unknownAction = { type: "unknown-action" };
       
-      const updatedState = evaluate([sym('update-game-state'), [sym('quote'), initialState], [sym('quote'), unknownAction]], env);
+      const updatedState = evaluate([sym('update-game-state-enhanced'), [sym('quote'), initialState], [sym('quote'), unknownAction]], env);
       expect(updatedState).toEqual(initialState); // should return original state
+    });
+
+    // Phase 7.5 Advanced Game State Management Tests
+    test('should manage complex game state with immutable operations', () => {
+      const initialState = evaluate([sym('init-game-state-pure'), 4], env);
+      
+      // Test comprehensive state structure
+      expect(initialState[0]).toBe('game-state');
+      expect(initialState[1]).toBe(4); // player count
+      expect(initialState[2]).toBe(0); // current player
+      expect(initialState[3]).toBe(null); // field cards
+      expect(initialState[4]).toBeDefined(); // game data
+      expect(initialState[4].consecutivePasses).toBe(0);
+      expect(initialState[4].isRevolution).toBe(false);
+      expect(initialState[4].hands).toBeDefined();
+      expect(initialState[4].hands.length).toBe(4);
+    });
+
+    test('should update game state with atomic immutable operations', () => {
+      const initialState = evaluate([sym('init-game-state-pure'), 3], env);
+      const cards = [evaluate([sym('create-card'), '♠', '5'], env)];
+      
+      // Test atomic state update operations
+      const stateWithField = evaluate([sym('update-game-state-atomic'), 
+        [sym('quote'), initialState],
+        [sym('quote'), { type: 'set-field-cards', cards: cards }]
+      ], env);
+      
+      const stateWithNextPlayer = evaluate([sym('update-game-state-atomic'),
+        [sym('quote'), stateWithField], 
+        [sym('quote'), { type: 'advance-player' }]
+      ], env);
+      
+      const stateWithRevolution = evaluate([sym('update-game-state-atomic'),
+        [sym('quote'), stateWithNextPlayer],
+        [sym('quote'), { type: 'toggle-revolution' }]
+      ], env);
+      
+      // Verify immutability - original state unchanged
+      expect(initialState[2]).toBe(0);
+      expect(initialState[3]).toBe(null);
+      expect(initialState[4].isRevolution).toBe(false);
+      
+      // Verify final state changes
+      expect(stateWithRevolution[2]).toBe(1); // player advanced
+      expect(stateWithRevolution[3]).toEqual(cards); // field set
+      expect(stateWithRevolution[4].isRevolution).toBe(true); // revolution toggled
+    });
+
+    test('should provide state inspection utilities with performance optimization', () => {
+      const gameState = evaluate([sym('init-game-state-pure'), 6], env);
+      
+      // Test optimized state inspection functions
+      const playerCount = evaluate([sym('get-player-count-fast'), [sym('quote'), gameState]], env);
+      const currentPlayer = evaluate([sym('get-current-player-fast'), [sym('quote'), gameState]], env);
+      const fieldCards = evaluate([sym('get-field-cards-fast'), [sym('quote'), gameState]], env);
+      const isRevolution = evaluate([sym('is-revolution-mode'), [sym('quote'), gameState]], env);
+      const consecutivePasses = evaluate([sym('get-consecutive-passes'), [sym('quote'), gameState]], env);
+      
+      expect(playerCount).toBe(6);
+      expect(currentPlayer).toBe(0);
+      expect(fieldCards).toBe(null);
+      expect(isRevolution).toBe(false);
+      expect(consecutivePasses).toBe(0);
+    });
+
+    test('should handle complex state transitions with validation', () => {
+      const initialState = evaluate([sym('init-game-state-pure'), 4], env);
+      
+      // Test state transition validation
+      const invalidPlayerAction = { type: 'set-current-player', player: 5 }; // Invalid player
+      const validPlayerAction = { type: 'set-current-player', player: 2 };
+      
+      const invalidResult = evaluate([sym('update-game-state-validated'),
+        [sym('quote'), initialState],
+        [sym('quote'), invalidPlayerAction]
+      ], env);
+      
+      const validResult = evaluate([sym('update-game-state-validated'),
+        [sym('quote'), initialState], 
+        [sym('quote'), validPlayerAction]
+      ], env);
+      
+      // Invalid transition should fail
+      expect(invalidResult.success).toBe(false);
+      expect(invalidResult.error).toBe('invalid-player-index');
+      
+      // Valid transition should succeed  
+      expect(validResult.success).toBe(true);
+      expect(validResult.newState[2]).toBe(2);
+    });
+
+    test('should support state snapshots and rollback operations', () => {
+      const initialState = evaluate([sym('init-game-state-pure'), 3], env);
+      
+      // Create snapshot
+      const snapshot = evaluate([sym('create-state-snapshot'), [sym('quote'), initialState]], env);
+      
+      // Make changes
+      const modifiedState = evaluate([sym('update-game-state-atomic'),
+        [sym('quote'), initialState],
+        [sym('quote'), { type: 'advance-player' }]
+      ], env);
+      
+      // Rollback to snapshot
+      const rolledBackState = evaluate([sym('rollback-to-snapshot'), [sym('quote'), snapshot]], env);
+      
+      expect(modifiedState[2]).toBe(1); // Player advanced
+      expect(rolledBackState[2]).toBe(0); // Back to original
+      expect(rolledBackState).toEqual(initialState); // Complete rollback
     });
   });
 
@@ -434,6 +767,125 @@ describe('Pure Lisp Game Engine', () => {
       expect(() => {
         evaluate([sym('process-turn'), [sym('quote'), validState], [sym('quote'), { type: "play" }]], env);
       }).toThrow('process-turn: play action must include cards array');
+    });
+
+    // Phase 7.6 Advanced Turn Processing Tests
+    test('should process complex turn with validation and side effects', () => {
+      const gameState = evaluate([sym('init-game-state-pure'), 4], env);
+      const cards = [evaluate([sym('create-card'), '♠', '8'], env)];
+      
+      // Test advanced turn processing with validation
+      const result = evaluate([sym('process-turn-comprehensive'), 
+        [sym('quote'), gameState], 
+        [sym('quote'), { type: 'play', cards: cards, player: 0 }]
+      ], env);
+      
+      expect(result.success).toBe(true);
+      expect(result.newState[2]).toBe(1); // Player advanced
+      expect(result.newState[3]).toEqual(cards); // Field updated
+      expect(result.sideEffects).toBeDefined();
+      expect(result.sideEffects.cardsPlayed).toEqual(cards);
+      expect(result.sideEffects.playerAdvanced).toBe(true);
+    });
+
+    test('should handle turn processing with special rules integration', () => {
+      const gameState = evaluate([sym('init-game-state-pure'), 4], env);
+      const eightCard = [evaluate([sym('create-card'), '♠', '8'], env)];
+      
+      // Test eight-cut special rule during turn processing
+      const result = evaluate([sym('process-turn-with-rules'), 
+        [sym('quote'), gameState], 
+        [sym('quote'), { type: 'play', cards: eightCard, player: 0 }]
+      ], env);
+      
+      expect(result.success).toBe(true);
+      expect(result.specialRules).toContain('eight-cut');
+      expect(result.newState[3]).toBe(null); // Field cleared by eight-cut
+      expect(result.newState[4].specialRulesActive).toContain('eight-cut');
+    });
+
+    test('should manage turn history and rollback capabilities', () => {
+      const gameState = evaluate([sym('init-game-state-pure'), 3], env);
+      
+      // Process multiple turns
+      const turn1 = evaluate([sym('process-turn-trackable'), 
+        [sym('quote'), gameState], 
+        [sym('quote'), { type: 'pass', player: 0 }]
+      ], env);
+      
+      const turn2 = evaluate([sym('process-turn-trackable'), 
+        [sym('quote'), turn1.newState], 
+        [sym('quote'), { type: 'pass', player: 1 }]
+      ], env);
+      
+      // Rollback to previous turn
+      const rolledBack = evaluate([sym('rollback-turn'), [sym('quote'), turn2.newState]], env);
+      
+      expect(turn1.newState[2]).toBe(1); // First turn advanced to player 1
+      expect(turn2.newState[2]).toBe(2); // Second turn advanced to player 2
+      expect(rolledBack[2]).toBe(1); // Rolled back to player 1
+      expect(rolledBack[4].turnHistory.length).toBe(turn1.newState[4].turnHistory.length);
+    });
+
+    test('should process concurrent turn validation with conflict resolution', () => {
+      const gameState = evaluate([sym('init-game-state-pure'), 4], env);
+      const cards = [evaluate([sym('create-card'), '♥', '9'], env)];
+      
+      // Test concurrent turn processing
+      const turnAction1 = { type: 'play', cards: cards, player: 0, timestamp: Date.now() };
+      const turnAction2 = { type: 'pass', player: 0, timestamp: Date.now() + 1 };
+      
+      const result = evaluate([sym('process-concurrent-turns'), 
+        [sym('quote'), gameState], 
+        [sym('quote'), [turnAction1, turnAction2]]
+      ], env);
+      
+      expect(result.conflictResolved).toBe(true);
+      expect(result.chosenAction.type).toBe('pass'); // Later timestamp wins
+      expect(result.rejectedActions.length).toBe(1);
+    });
+
+    test('should optimize turn processing with batch operations', () => {
+      const gameState = evaluate([sym('init-game-state-pure'), 4], env);
+      
+      // Test batch turn processing
+      const batchActions = [
+        { type: 'pass', player: 0 },
+        { type: 'pass', player: 1 },
+        { type: 'pass', player: 2 }
+      ];
+      
+      const result = evaluate([sym('process-turn-batch'), 
+        [sym('quote'), gameState], 
+        [sym('quote'), batchActions]
+      ], env);
+      
+      expect(result.success).toBe(true);
+      expect(result.newState[2]).toBe(3); // Advanced through all players
+      expect(result.newState[4].consecutivePasses).toBe(3);
+      expect(result.processedCount).toBe(3);
+      expect(result.optimized).toBe(true);
+    });
+
+    test('should handle turn timeout and automatic progression', () => {
+      const gameState = evaluate([sym('init-game-state-pure'), 4], env);
+      
+      // Test turn timeout handling
+      const timedAction = { 
+        type: 'timed-turn', 
+        player: 0, 
+        timeout: 1000,
+        fallbackAction: { type: 'pass' }
+      };
+      
+      const result = evaluate([sym('process-timed-turn'), 
+        [sym('quote'), gameState], 
+        [sym('quote'), timedAction]
+      ], env);
+      
+      expect(result.timedOut).toBe(false); // Should process immediately in test
+      expect(result.newState[2]).toBe(1); // Player advanced
+      expect(result.timeoutHandled).toBe(true);
     });
   });
 
@@ -721,6 +1173,224 @@ describe('Pure Lisp Game Engine', () => {
       expect(() => {
         evaluate([sym('apply-special-rules'), [sym('quote'), null], [sym('quote'), evaluate([sym('init-game-state'), 4], env)]], env);
       }).toThrow('apply-special-rules: cards must be an array');
+    });
+  });
+
+  describe('Pure Lisp Game End and Ranking System', () => {
+    beforeEach(() => {
+      evaluate([sym('load'), 'card-operations.lisp'], env);
+      evaluate([sym('load'), 'card-comparison.lisp'], env);
+      evaluate([sym('load'), 'game-logic.lisp'], env);
+    });
+
+    test('should detect game end when a player has no cards', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Set player hands - player 0 has no cards (finished)
+      const stateWithHands = evaluate([sym('set-player-hand'), [sym('quote'), gameState], 0, [sym('quote'), []]], env);
+      const stateWithHands2 = evaluate([sym('set-player-hand'), [sym('quote'), stateWithHands], 1, [sym('quote'), [
+        evaluate([sym('create-card'), '♠', '5'], env),
+        evaluate([sym('create-card'), '♥', '6'], env)
+      ]]], env);
+      
+      const gameEndResult = evaluate([sym('check-game-end'), [sym('quote'), stateWithHands2]], env);
+      
+      expect(gameEndResult.gameEnded).toBe(true);
+      expect(gameEndResult.winner).toBe(0);
+      expect(gameEndResult.finishedPlayers).toContain(0);
+    });
+
+    test('should not detect game end when all players have cards', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Set all players to have cards
+      let currentState = gameState;
+      for (let i = 0; i < 4; i++) {
+        currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], i, [sym('quote'), [
+          evaluate([sym('create-card'), '♠', '5'], env),
+          evaluate([sym('create-card'), '♥', '6'], env)
+        ]]], env);
+      }
+      
+      const gameEndResult = evaluate([sym('check-game-end'), [sym('quote'), currentState]], env);
+      
+      expect(gameEndResult.gameEnded).toBe(false);
+      expect(gameEndResult.winner).toBe(null);
+      expect(gameEndResult.finishedPlayers).toEqual([]);
+    });
+
+    test('should calculate ranking based on hand sizes and finish order', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Set different hand sizes for players
+      let currentState = gameState;
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 0, [sym('quote'), []]], env); // 1st place - finished
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 1, [sym('quote'), [
+        evaluate([sym('create-card'), '♠', '5'], env)
+      ]]], env); // 2nd place - 1 card
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 2, [sym('quote'), [
+        evaluate([sym('create-card'), '♥', '6'], env),
+        evaluate([sym('create-card'), '♦', '7'], env)
+      ]]], env); // 3rd place - 2 cards
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 3, [sym('quote'), [
+        evaluate([sym('create-card'), '♣', '8'], env),
+        evaluate([sym('create-card'), '♠', '9'], env),
+        evaluate([sym('create-card'), '♥', '10'], env)
+      ]]], env); // 4th place - 3 cards
+      
+      const ranking = evaluate([sym('calculate-ranking'), [sym('quote'), currentState]], env);
+      
+      expect(ranking).toHaveLength(4);
+      expect(ranking[0]).toEqual({ player: 0, rank: 1, cardCount: 0, title: 'daifugo' }); // 大富豪
+      expect(ranking[1]).toEqual({ player: 1, rank: 2, cardCount: 1, title: 'fugo' }); // 富豪
+      expect(ranking[2]).toEqual({ player: 2, rank: 3, cardCount: 2, title: 'heimin' }); // 平民
+      expect(ranking[3]).toEqual({ player: 3, rank: 4, cardCount: 3, title: 'daihinmin' }); // 大貧民
+    });
+
+    test('should handle tied rankings correctly', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Set players with same hand sizes
+      let currentState = gameState;
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 0, [sym('quote'), []]], env); // 1st place
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 1, [sym('quote'), [
+        evaluate([sym('create-card'), '♠', '5'], env),
+        evaluate([sym('create-card'), '♥', '6'], env)
+      ]]], env); // Tied for 2nd
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 2, [sym('quote'), [
+        evaluate([sym('create-card'), '♦', '7'], env),
+        evaluate([sym('create-card'), '♣', '8'], env)
+      ]]], env); // Tied for 2nd
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 3, [sym('quote'), [
+        evaluate([sym('create-card'), '♠', '9'], env)
+      ]]], env); // Better than tied players
+      
+      const ranking = evaluate([sym('calculate-ranking'), [sym('quote'), currentState]], env);
+      
+      expect(ranking[0].rank).toBe(1); // Player 0 - 1st place
+      expect(ranking[1].rank).toBe(2); // Player 3 - 2nd place (fewer cards)
+      expect(ranking[2].rank).toBe(3); // Players 1&2 tied for 3rd
+      expect(ranking[3].rank).toBe(3);
+    });
+
+    test('should assign social ranks correctly', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      let currentState = gameState;
+      for (let i = 0; i < 4; i++) {
+        const cardCount = i; // 0, 1, 2, 3 cards respectively
+        const cards = [];
+        for (let j = 0; j < cardCount; j++) {
+          cards.push(evaluate([sym('create-card'), '♠', (j + 3).toString()], env));
+        }
+        currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], i, [sym('quote'), cards]], env);
+      }
+      
+      const socialRanks = evaluate([sym('assign-social-ranks'), [sym('quote'), currentState]], env);
+      
+      expect(socialRanks[0]).toBe('daifugo'); // 大富豪 - fewest cards
+      expect(socialRanks[1]).toBe('fugo'); // 富豪 
+      expect(socialRanks[2]).toBe('heimin'); // 平民
+      expect(socialRanks[3]).toBe('daihinmin'); // 大貧民 - most cards
+    });
+
+    test('should detect multiple winners in team mode', () => {
+      const gameState = evaluate([sym('init-game-state'), 6], env); // 6 players for team mode
+      
+      // Two players finish simultaneously (team victory)
+      let currentState = gameState;
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 0, [sym('quote'), []]], env);
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 1, [sym('quote'), []]], env);
+      for (let i = 2; i < 6; i++) {
+        currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], i, [sym('quote'), [
+          evaluate([sym('create-card'), '♠', '5'], env)
+        ]]], env);
+      }
+      
+      const gameEndResult = evaluate([sym('check-game-end'), [sym('quote'), currentState]], env);
+      
+      expect(gameEndResult.gameEnded).toBe(true);
+      expect(gameEndResult.multipleWinners).toBe(true);
+      expect(gameEndResult.finishedPlayers).toContain(0);
+      expect(gameEndResult.finishedPlayers).toContain(1);
+    });
+
+    test('should track finish order across multiple rounds', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Simulate finish order tracking
+      let currentState = gameState;
+      
+      // Player 2 finishes first
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 2, [sym('quote'), []]], env);
+      const firstFinish = evaluate([sym('update-finish-order'), [sym('quote'), currentState], 2], env);
+      
+      // Player 0 finishes second
+      let secondState = evaluate([sym('set-player-hand'), [sym('quote'), firstFinish], 0, [sym('quote'), []]], env);
+      const secondFinish = evaluate([sym('update-finish-order'), [sym('quote'), secondState], 0], env);
+      
+      const finishOrder = evaluate([sym('get-finish-order'), [sym('quote'), secondFinish]], env);
+      
+      expect(finishOrder).toEqual([2, 0]); // Player 2 first, Player 0 second
+    });
+
+    test('should determine next game setup based on rankings', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Set up a completed game state with rankings
+      let currentState = gameState;
+      for (let i = 0; i < 4; i++) {
+        currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], i, [sym('quote'), []]], env);
+      }
+      
+      const ranking = evaluate([sym('calculate-ranking'), [sym('quote'), currentState]], env);
+      const nextGameSetup = evaluate([sym('prepare-next-game'), [sym('quote'), ranking]], env);
+      
+      expect(nextGameSetup.seatingOrder).toBeDefined();
+      expect(nextGameSetup.cardExchangeRules).toBeDefined();
+      expect(nextGameSetup.specialPrivileges).toBeDefined();
+      expect(nextGameSetup.daifugo).toBe(ranking[0].player);
+      expect(nextGameSetup.daihinmin).toBe(ranking[ranking.length - 1].player);
+    });
+
+    test('should validate game end conditions with error handling', () => {
+      const invalidGameState = ["invalid-state"];
+      
+      expect(() => {
+        evaluate([sym('check-game-end'), [sym('quote'), invalidGameState]], env);
+      }).toThrow('check-game-end: invalid game state format');
+      
+      // Test with valid state but invalid player data
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      expect(() => {
+        evaluate([sym('calculate-ranking'), [sym('quote'), null]], env);
+      }).toThrow('calculate-ranking: gameState must be provided');
+    });
+
+    test('should support custom victory conditions', () => {
+      const gameState = evaluate([sym('init-game-state'), 4], env);
+      
+      // Custom victory condition: game ends when total cards < threshold
+      const customCondition = {
+        type: 'total-cards-threshold',
+        threshold: 5
+      };
+      
+      let currentState = gameState;
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 0, [sym('quote'), [
+        evaluate([sym('create-card'), '♠', '5'], env)
+      ]]], env);
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 1, [sym('quote'), [
+        evaluate([sym('create-card'), '♥', '6'], env)
+      ]]], env);
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 2, [sym('quote'), []]], env);
+      currentState = evaluate([sym('set-player-hand'), [sym('quote'), currentState], 3, [sym('quote'), []]], env);
+      
+      const customGameEnd = evaluate([sym('check-custom-game-end'), [sym('quote'), currentState], [sym('quote'), customCondition]], env);
+      
+      expect(customGameEnd.gameEnded).toBe(true);
+      expect(customGameEnd.condition).toBe('total-cards-threshold');
     });
   });
 });

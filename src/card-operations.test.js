@@ -48,18 +48,12 @@ describe('Lisp Card Operations', () => {
 
     test('create-card should generate valid card object', () => {
       const card = evaluate([sym('create-card'), '♠', '8'], env);
-      expect(card).toEqual({
-        suit: '♠',
-        rank: '8'
-      });
+      expect(card).toEqual(['card', '♠', '8']);
     });
 
     test('create-joker should generate joker card', () => {
       const joker = evaluate([sym('create-joker')], env);
-      expect(joker).toEqual({
-        suit: null,
-        rank: 'JOKER'
-      });
+      expect(joker).toEqual(['card', null, 'JOKER']);
     });
   });
 

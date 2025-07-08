@@ -25,19 +25,38 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Load all game modules for Lisp engine
  */
 async function loadGameModules() {
-    console.log('📦 Loading Lisp game modules...');
+    console.log('📦 Loading Lisp game modules with code splitting...');
     
     try {
-        // Load core modules required by Lisp engine
-        await import('./lisp-engine.js');
-        await import('./lisp-game-controller.js');
-        await import('./debug-system.js');
-        await import('./rule-settings.js');
-        await import('./dynamic-rule-ui.js');
+        // Load module loader first
+        const { moduleLoader } = await import('./module-loader.js');
+        window.moduleLoader = moduleLoader;
         
-        console.log('✅ All Lisp game modules loaded');
+        // Load core modules first (required for basic functionality)
+        console.log('🎯 Loading core modules...');
+        const coreModules = await moduleLoader.loadCoreModules();
+        
+        // Load game controller
+        console.log('📦 Loading Game Controller...');
+        await moduleLoader.loadModule('gameController', './lisp-game-controller.js');
+        
+        // Preload optional modules in background
+        console.log('🚀 Preloading optional modules...');
+        moduleLoader.preloadModules([
+            { name: 'ruleSettings', path: './rule-settings.js' },
+            { name: 'dynamicRuleUI', path: './dynamic-rule-ui.js' },
+            { name: 'ruleLoader', path: './dynamic-rule-loader.js' }
+        ]);
+        
+        console.log('✅ Core modules loaded, optional modules preloading...');
+        
+        // Show loading stats
+        const stats = moduleLoader.getStats();
+        console.log('📊 Module loading stats:', stats);
+        
     } catch (error) {
         console.error('❌ Failed to load Lisp game modules:', error);
+        throw error;
     }
 }
 
@@ -47,33 +66,119 @@ async function loadGameModules() {
 function initializeGameController() {
     console.log('🎯 Initializing Lisp game controller...');
     
-    // Initialize debug system first
-    if (window.GameDebugSystemModule && window.GameDebugSystemModule.GameDebugSystem) {
-        window.debugSystem = new window.GameDebugSystemModule.GameDebugSystem();
-        console.log('✅ Debug system initialized');
-    } else {
-        console.error('❌ GameDebugSystemModule not found');
+    try {
+        // Initialize debug system first
+        if (window.GameDebugSystemModule && window.GameDebugSystemModule.GameDebugSystem) {
+            window.debugSystem = new window.GameDebugSystemModule.GameDebugSystem();
+            console.log('✅ Debug system initialized');
+        } else {
+            console.warn('⚠️ GameDebugSystemModule not found - using fallback');
+            window.debugSystem = { log: console.log };
+        }
+        
+        // Create global rule settings (lazy loaded)
+        if (window.RuleSettingsModule && window.RuleSettingsModule.RuleSettings) {
+            window.ruleSettings = new window.RuleSettingsModule.RuleSettings();
+            console.log('✅ Rule settings initialized');
+        } else {
+            console.warn('⚠️ RuleSettingsModule not found - will load on demand');
+            window.ruleSettings = { 
+                showSettings: async () => {
+                    if (window.moduleLoader) {
+                        const ruleModule = await window.moduleLoader.loadModule('ruleSettings', './rule-settings.js');
+                        if (ruleModule.RuleSettingsModule && ruleModule.RuleSettingsModule.RuleSettings) {
+                            window.ruleSettings = new ruleModule.RuleSettingsModule.RuleSettings();
+                            window.ruleSettings.showSettings();
+                        }
+                    } else {
+                        console.log('Settings not available');
+                    }
+                }
+            };
+        }
+        
+        // Create Lisp game controller
+        if (window.LispGameControllerModule && window.LispGameControllerModule.LispGameController) {
+            window.gameController = new window.LispGameControllerModule.LispGameController();
+            console.log('✅ Lisp Game controller initialized');
+        } else {
+            console.error('❌ LispGameControllerModule not found');
+            // Try to create start button manually as fallback
+            createFallbackStartButton();
+            return;
+        }
+        
+        // Initialize Dynamic Rule Loader (lazy loaded)
+        if (window.DynamicRuleLoaderModule && window.DynamicRuleLoaderModule.DynamicRuleLoader) {
+            const adapter = window.gameController.lispEngine ? 
+                { ...window.gameController.lispEngine, 
+                  getRegisteredRules: () => ['basic-play', 'card-strength', 'revolution', 'eight-cut'],
+                  getRuleDetails: (name) => ({ name, description: `Rule: ${name}`, isActive: true, isCustom: false }),
+                  setRuleActive: (name, active) => ({ success: true, ruleName: name, active }),
+                  removeRule: (name) => ({ success: false, error: 'Cannot remove built-in rules' }),
+                  uploadRuleFile: async () => ({ success: false, error: 'Not implemented' }),
+                  loadDynamicRule: async () => ({ success: false, error: 'Not implemented' })
+                } : null;
+                
+            if (adapter) {
+                window.dynamicRuleLoader = new window.DynamicRuleLoaderModule.DynamicRuleLoader(adapter);
+                console.log('✅ Dynamic Rule Loader initialized');
+            } else {
+                console.warn('⚠️ Dynamic Rule Loader not initialized - no adapter available');
+            }
+        } else {
+            console.warn('⚠️ DynamicRuleLoaderModule not found - will load on demand');
+            window.dynamicRuleLoader = {
+                show: async () => {
+                    if (window.moduleLoader) {
+                        const ruleModule = await window.moduleLoader.loadModule('ruleLoader', './dynamic-rule-loader.js');
+                        if (ruleModule.DynamicRuleLoaderModule && ruleModule.DynamicRuleLoaderModule.DynamicRuleLoader) {
+                            const adapter = window.gameController.lispEngine || {};
+                            window.dynamicRuleLoader = new ruleModule.DynamicRuleLoaderModule.DynamicRuleLoader(adapter);
+                            window.dynamicRuleLoader.show();
+                        }
+                    } else {
+                        console.log('Rule loader not available');
+                    }
+                }
+            };
+        }
+        
+        console.log('✅ Lisp game controller and rule settings ready');
+        
+    } catch (error) {
+        console.error('❌ Error initializing game controller:', error);
+        createFallbackStartButton();
     }
+}
+
+/**
+ * Create fallback start button when modules fail to load
+ */
+function createFallbackStartButton() {
+    console.log('🔧 Creating fallback start button...');
     
-    // Create global rule settings first
-    if (window.RuleSettingsModule && window.RuleSettingsModule.RuleSettings) {
-        window.ruleSettings = new window.RuleSettingsModule.RuleSettings();
-        console.log('✅ Rule settings initialized');
-    } else {
-        console.error('❌ RuleSettingsModule not found');
+    const gameStatus = document.getElementById('game-status');
+    if (!gameStatus) {
+        console.error('❌ game-status element not found');
         return;
     }
     
-    // Create Lisp game controller
-    if (window.LispGameControllerModule && window.LispGameControllerModule.LispGameController) {
-        window.gameController = new window.LispGameControllerModule.LispGameController();
-        console.log('✅ Lisp Game controller initialized');
-    } else {
-        console.error('❌ LispGameControllerModule not found');
-        return;
-    }
+    // Clear existing content
+    gameStatus.innerHTML = '';
     
-    console.log('✅ Lisp game controller and rule settings ready');
+    // Create fallback button
+    const startButton = document.createElement('button');
+    startButton.textContent = '🎮 ゲーム開始 (基本版)';
+    startButton.className = 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4 cursor-pointer';
+    startButton.id = 'fallback-start-button';
+    
+    startButton.addEventListener('click', () => {
+        alert('Lispエンジンの読み込みに失敗しました。ページを再読み込みしてください。');
+    });
+    
+    gameStatus.appendChild(startButton);
+    console.log('✅ Fallback start button created');
 }
 
 /**
