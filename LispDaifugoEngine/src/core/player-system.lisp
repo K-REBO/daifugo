@@ -14,9 +14,13 @@
            #:player-ai-type
            #:create-players
            #:add-card-to-hand
+           #:add-cards-to-hand
            #:remove-card-from-hand
+           #:remove-cards-from-hand
            #:hand-empty-p
-           #:get-player-by-id))
+           #:hand-count
+           #:get-player-by-id
+           #:player-to-string))
 
 (in-package :daifugo-player-system)
 
@@ -61,12 +65,38 @@
   (setf (player-hand player) 
         (remove card (player-hand player) :test #'equal)))
 
+;;; 複数カードを手札から除去
+(defun remove-cards-from-hand (player cards)
+  "プレイヤーの手札から複数のカードを除去する"
+  (dolist (card cards)
+    (remove-card-from-hand player card)))
+
+;;; 複数カードを手札に追加
+(defun add-cards-to-hand (player cards)
+  "プレイヤーの手札に複数のカードを追加する"
+  (dolist (card cards)
+    (add-card-to-hand player card)))
+
 ;;; 手札が空かどうか
 (defun hand-empty-p (player)
   "プレイヤーの手札が空かどうかを判定する"
   (null (player-hand player)))
 
+;;; 手札の枚数を取得
+(defun hand-count (player)
+  "プレイヤーの手札の枚数を取得する"
+  (length (player-hand player)))
+
 ;;; プレイヤーをIDで取得
 (defun get-player-by-id (players player-id)
   "プレイヤーリストからIDでプレイヤーを取得する"
   (find player-id players :key #'player-id))
+
+;;; プレイヤーの表示
+(defun player-to-string (player)
+  "プレイヤーを文字列で表示する"
+  (format nil "~A (ID:~A, 階級:~A, 手札:~A枚)" 
+          (player-name player)
+          (player-id player)
+          (player-rank player)
+          (hand-count player)))
