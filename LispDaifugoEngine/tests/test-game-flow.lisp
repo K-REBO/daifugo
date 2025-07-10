@@ -51,11 +51,13 @@
   "カードプレイのテスト"
   (let ((game (daifugo-game-engine:create-game 4))
         (cards (list (daifugo-card-system:create-card 'daifugo-card-system::A :spades))))
+    (daifugo-game-engine:start-game game)
     (daifugo-game-engine:play-card game 0 cards)))
 
 (defun test-pass-turn ()
   "パスのテスト"
   (let ((game (daifugo-game-engine:create-game 4)))
+    (daifugo-game-engine:start-game game)
     (daifugo-game-engine:pass-turn game 0)))
 
 (defun test-game-state-components ()

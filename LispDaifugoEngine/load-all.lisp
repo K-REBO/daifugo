@@ -13,6 +13,8 @@
   ;; コアシステム
   (load "src/core/card-system.lisp")
   (load "src/core/player-system.lisp")
+  (load "src/utils/player-utils.lisp")
+  (load "src/core/game-logic.lisp")
   (load "src/core/rule-engine.lisp")
   (load "src/core/game-engine.lisp")
   

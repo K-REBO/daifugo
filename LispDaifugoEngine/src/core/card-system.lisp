@@ -37,25 +37,27 @@
     ((eql rank 8) 6)
     ((eql rank 9) 7)
     ((eql rank 10) 8)
-    ((eql rank 'J) 9)
-    ((eql rank 'Q) 10)
-    ((eql rank 'K) 11)
-    ((eql rank 'A) 12)
+    ;; シンボルは文字列で比較してパッケージ独立にする
+    ((and (symbolp rank) (string= (symbol-name rank) "J")) 9)
+    ((and (symbolp rank) (string= (symbol-name rank) "Q")) 10)
+    ((and (symbolp rank) (string= (symbol-name rank) "K")) 11)
+    ((and (symbolp rank) (string= (symbol-name rank) "A")) 12)
     ((eql rank 2) 13)
-    ((eql rank 'JOKER) 14)
+    ((and (symbolp rank) (string= (symbol-name rank) "JOKER")) 14)
     (t 0)))
 
 ;;; カード強度の定数
 (defparameter *card-strength-map*
   '((3 . 1) (4 . 2) (5 . 3) (6 . 4) (7 . 5) (8 . 6) (9 . 7) (10 . 8)
     (J . 9) (Q . 10) (K . 11) (A . 12) (2 . 13) (JOKER . 14))
-  "カードランクと強度のマッピング")
+  "カード強度のマップ")
 
 ;;; ランク検証
 (defun valid-rank-p (rank)
   "有効なランクかどうかを判定する"
-  (or (and (numberp rank) (or (= rank 2) (and (>= rank 3) (<= rank 10))))
-      (member rank '(J Q K A JOKER))))
+  (or (member rank '(3 4 5 6 7 8 9 10 2))
+      (and (symbolp rank) 
+           (member (symbol-name rank) '("J" "Q" "K" "A" "JOKER") :test #'string=))))
 
 ;;; スート検証
 (defun valid-suit-p (suit)
@@ -95,19 +97,8 @@
         (rotatef (nth i shuffled) (nth j shuffled))))
     shuffled))
 
-;;; カード配布
-(defun deal-cards (deck player-count)
-  "カードを均等に配布する"
-  (let ((hands (make-array player-count :initial-element nil))
-        (cards-per-player (floor (length deck) player-count)))
-    (loop for i from 0 below (* player-count cards-per-player) do
-      (let ((player-id (mod i player-count)))
-        (push (nth i deck) (aref hands player-id))))
-    ;; 残りのカードを順番に配布
-    (loop for i from (* player-count cards-per-player) below (length deck) do
-      (let ((player-id (mod i player-count)))
-        (push (nth i deck) (aref hands player-id))))
-    (map 'list #'identity hands)))
+;;; カード配布（削除予定 - game-engineに移動）
+;; この関数は game-engine.lisp に移動されました
 
 ;;; カード比較
 (defun compare-cards (card1 card2)
