@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LispDaifugoEngine - ブラウザ版大富豪</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎴 LispDaifugoEngine</h1>
+            <p class="subtitle">ブラウザで動作するLisp実装の大富豪ゲーム</p>
+        </header>
+
+        <main>
+            <div class="tabs">
+                <button class="tab-button active" data-tab="repl">Lisp REPL</button>
+                <button class="tab-button" data-tab="game">ゲーム</button>
+                <button class="tab-button" data-tab="test">テスト</button>
+            </div>
+
+            <!-- REPL Tab -->
+            <div class="tab-content active" id="repl">
+                <div class="repl-container">
+                    <div class="repl-header">
+                        <h2>🖥️ Deno Lisp インタープリター</h2>
+                        <button id="clear-repl">クリア</button>
+                    </div>
+                    <div class="repl-output" id="repl-output">
+                        <div class="repl-welcome">
+                            <p>🚀 LispDaifugoEngine REPL v1.0</p>
+                            <p>Lisp式を入力してください...</p>
+                        </div>
+                    </div>
+                    <div class="repl-input-container">
+                        <span class="repl-prompt">lisp> </span>
+                        <input type="text" id="repl-input" placeholder="(+ 1 2)" autocomplete="off">
+                        <button id="eval-button">実行</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Tab -->
+            <div class="tab-content" id="game">
+                <div class="game-container">
+                    <div class="game-header">
+                        <h2>🎮 大富豪ゲーム</h2>
+                        <button id="new-game">新しいゲーム</button>
+                    </div>
+                    <div class="game-status">
+                        <div class="game-info">
+                            <span id="current-player">現在のプレイヤー: Player 1</span>
+                            <span id="game-phase">フェーズ: 準備中</span>
+                        </div>
+                    </div>
+                    <div class="game-board">
+                        <div class="field">
+                            <h3>場</h3>
+                            <div id="field-cards" class="card-area">
+                                <div class="empty-field">カードが出されていません</div>
+                            </div>
+                        </div>
+                        <div class="players">
+                            <div class="player" id="player-1">
+                                <h4>プレイヤー 1</h4>
+                                <div class="hand" id="hand-1"></div>
+                                <div class="actions">
+                                    <button class="play-button">カードを出す</button>
+                                    <button class="pass-button">パス</button>
+                                </div>
+                            </div>
+                            <div class="player" id="player-2">
+                                <h4>プレイヤー 2</h4>
+                                <div class="hand" id="hand-2"></div>
+                            </div>
+                            <div class="player" id="player-3">
+                                <h4>プレイヤー 3</h4>
+                                <div class="hand" id="hand-3"></div>
+                            </div>
+                            <div class="player" id="player-4">
+                                <h4>プレイヤー 4</h4>
+                                <div class="hand" id="hand-4"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Tab -->
+            <div class="tab-content" id="test">
+                <div class="test-container">
+                    <div class="test-header">
+                        <h2>🧪 システムテスト</h2>
+                        <button id="run-tests">全テスト実行</button>
+                    </div>
+                    <div class="test-results" id="test-results">
+                        <div class="test-info">
+                            <p>テストを実行してLispDaifugoEngineの動作を確認できます</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>🤖 Generated with <a href="https://claude.ai/code">Claude Code</a></p>
+        </footer>
+    </div>
+
+    <script src="js/lisp-interpreter.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
