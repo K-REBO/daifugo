@@ -1,85 +1,206 @@
-// main.ts - Deno Lisp Interpreter Entry Point
+// main.ts - Deno Lisp Interpreter メインエントリーポイント
 
-import { join } from "@std/path";
+import { SExpressionParser } from "./parser/s-expression-parser.ts";
+import { BasicEvaluator } from "./evaluator/basic-evaluator.ts";
+import { SymbolTable } from "./core/symbol-table.ts";
+import { StructSystem } from "./core/struct-system.ts";
+import { PackageSystem } from "./core/package-system.ts";
+import { FileLoader } from "./core/file-loader.ts";
 
 /**
- * Deno Lisp Interpreter
- * 既存のLispDaifugoEngineコードをJavaScript環境で実行するためのインタープリター
+ * Deno Lisp Interpreter メインクラス
  */
-
 class DenoLispInterpreter {
-  private version = "0.1.0";
-  
+  private parser: SExpressionParser;
+  private evaluator: BasicEvaluator;
+  private symbolTable: SymbolTable;
+  private structSystem: StructSystem;
+  private packageSystem: PackageSystem;
+  private fileLoader: FileLoader;
+
   constructor() {
-    console.log(`Deno Lisp Interpreter v${this.version}`);
-    console.log(`Running on Deno ${Deno.version.deno}`);
+    // 各システムの初期化
+    this.parser = new SExpressionParser();
+    this.evaluator = new BasicEvaluator();
+    this.symbolTable = new SymbolTable();
+    this.structSystem = new StructSystem();
+    this.packageSystem = new PackageSystem();
+    this.fileLoader = new FileLoader();
+
+    // システム統合
+    this.integrateAllSystems();
   }
 
   /**
-   * Lispファイルを読み込んで実行（将来実装）
+   * 全システムを統合
    */
-  async loadFile(filePath: string): Promise<void> {
+  private integrateAllSystems(): void {
+    console.log("🔧 Initializing Deno Lisp Interpreter...");
+    
+    // 各システムを評価器に統合
+    this.evaluator.setStructSystem(this.structSystem);
+    this.structSystem.integrateWithEvaluator(this.evaluator);
+    this.packageSystem.integrateWithEvaluator(this.evaluator);
+    this.fileLoader.integrateWithEvaluator(this.evaluator);
+    
+    console.log("✅ All systems integrated successfully");
+  }
+
+  /**
+   * Lispファイルを実行
+   */
+  async executeFile(filePath: string): Promise<void> {
     try {
-      const absolutePath = join(Deno.cwd(), filePath);
-      const content = await Deno.readTextFile(absolutePath);
+      console.log(`📖 Loading Lisp file: ${filePath}`);
       
-      console.log(`Loading Lisp file: ${filePath}`);
-      console.log(`File size: ${content.length} characters`);
+      // ファイルの存在確認
+      try {
+        const fileInfo = await Deno.stat(filePath);
+        console.log(`📄 File size: ${fileInfo.size} bytes`);
+      } catch (error) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      // ファイルを読み込んで評価
+      const results = await this.fileLoader.evaluateFile(filePath, this.evaluator);
       
-      // 基本的なLisp構造の検証
-      const hasDefpackage = content.includes("defpackage");
-      const hasDefstruct = content.includes("defstruct");
-      const hasDefun = content.includes("defun");
+      console.log(`✅ File executed successfully`);
+      console.log(`📊 Evaluated ${results.length} expressions`);
       
-      console.log("Lisp structure analysis:");
-      console.log(`  defpackage: ${hasDefpackage ? "✅" : "❌"}`);
-      console.log(`  defstruct: ${hasDefstruct ? "✅" : "❌"}`);
-      console.log(`  defun: ${hasDefun ? "✅" : "❌"}`);
+      // 結果の表示
+      this.displayResults(results);
       
-      // TODO: 実際のLisp解析・実行はPhase 2以降で実装
-      console.log("⚠️  Actual Lisp execution not yet implemented");
+      // システム統計の表示
+      this.displaySystemStatistics();
       
     } catch (error) {
-      console.error(`Error loading file ${filePath}:`, error);
+      console.error(`❌ Error executing file: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
 
   /**
-   * インタープリターの状態表示
+   * 式を直接評価
    */
-  showStatus(): void {
-    console.log("\n=== Deno Lisp Interpreter Status ===");
-    console.log(`Version: ${this.version}`);
-    console.log(`Runtime: Deno ${Deno.version.deno} (TypeScript ${Deno.version.typescript})`);
+  evaluateExpression(expression: string): any {
+    try {
+      console.log(`🔍 Evaluating: ${expression}`);
+      const parsed = this.parser.parse(expression);
+      const result = this.evaluator.evaluate(parsed);
+      console.log(`📤 Result: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Error evaluating expression: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
+
+  /**
+   * インタラクティブREPLモード
+   */
+  async startREPL(): Promise<void> {
+    console.log("\n🎮 Starting Deno Lisp REPL");
+    console.log("Type 'exit' to quit, 'help' for commands");
     
-    const features = [
-      { name: "S-expression parsing", implemented: false },
-      { name: "Symbol evaluation", implemented: false },
-      { name: "Function definition (defun)", implemented: false },
-      { name: "Struct system (defstruct)", implemented: false },
-      { name: "Package system (defpackage)", implemented: false },
-      { name: "File loading", implemented: true },
-    ];
-    
-    console.log("\nImplemented features:");
-    features.forEach(({ name, implemented }) => {
-      console.log(`  ${implemented ? "✅" : "❌"} ${name}`);
+    while (true) {
+      try {
+        const input = prompt("lisp> ");
+        
+        if (!input) continue;
+        
+        const trimmed = input.trim();
+        
+        if (trimmed === "exit") {
+          console.log("👋 Goodbye!");
+          break;
+        }
+        
+        if (trimmed === "help") {
+          this.showHelp();
+          continue;
+        }
+        
+        if (trimmed.startsWith("load ")) {
+          const filePath = trimmed.substring(5).trim();
+          await this.executeFile(filePath);
+          continue;
+        }
+        
+        if (trimmed === "stats") {
+          this.displaySystemStatistics();
+          continue;
+        }
+        
+        // 式を評価
+        this.evaluateExpression(trimmed);
+        
+      } catch (error) {
+        console.error(`❌ REPL Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  }
+
+  /**
+   * ヘルプ情報を表示
+   */
+  private showHelp(): void {
+    console.log(`
+📚 Deno Lisp Interpreter Commands:
+  exit           - Exit the REPL
+  help           - Show this help message
+  load <file>    - Load and execute a Lisp file
+  stats          - Show system statistics
+  
+🔧 Lisp Functions Available:
+  Basic: +, -, *, /, =, <, >, <=, >=
+  Control: if, cond, let, defun
+  Structs: defstruct, make-*, *-p
+  Packages: defpackage, in-package
+  Files: load
+  
+📖 Example usage:
+  (+ 1 2 3)
+  (defun hello (name) (list "Hello" name))
+  (hello "World")
+    `);
+  }
+
+  /**
+   * 実行結果を表示
+   */
+  private displayResults(results: any[]): void {
+    console.log("\n📋 Execution Results:");
+    results.forEach((result, index) => {
+      console.log(`  [${index + 1}] ${JSON.stringify(result)}`);
     });
+  }
+
+  /**
+   * システム統計を表示
+   */
+  private displaySystemStatistics(): void {
+    console.log("\n📊 System Statistics:");
     
-    const targetFiles = [
-      "LispDaifugoEngine/src/core/card-system.lisp",
-      "LispDaifugoEngine/src/core/game-engine.lisp",
-      "LispDaifugoEngine/src/rules/*.lisp",
-    ];
+    // パッケージシステムの統計
+    const packageStats = this.packageSystem.getStatistics();
+    console.log(`  📦 Packages: ${packageStats.totalPackages}`);
+    console.log(`  🏷️  Symbols: ${packageStats.totalSymbols}`);
+    console.log(`  📤 Exported: ${packageStats.totalExportedSymbols}`);
+    console.log(`  🎯 Current Package: ${packageStats.currentPackage}`);
     
-    console.log("\nTarget Lisp files:");
-    targetFiles.forEach(file => console.log(`  - ${file}`));
+    // 構造体システムの統計
+    const structStats = this.structSystem.getStatistics();
+    console.log(`  🏗️  Structs: ${structStats.totalStructs}`);
+    console.log(`  🏭 Constructors: ${structStats.totalConstructors}`);
+    console.log(`  🔍 Accessors: ${structStats.totalAccessors}`);
+    console.log(`  ❓ Predicates: ${structStats.totalPredicates}`);
     
-    const implementedCount = features.filter(f => f.implemented).length;
-    const totalCount = features.length;
-    const progress = Math.round((implementedCount / totalCount) * 100);
-    console.log(`\nProgress: ${implementedCount}/${totalCount} features (${progress}%)`);
+    // ファイルローダーの統計
+    const fileStats = this.fileLoader.getStatistics();
+    console.log(`  📁 Loaded Files: ${fileStats.loadedFiles}`);
+    fileStats.totalFiles.forEach((file, index) => {
+      console.log(`    [${index + 1}] ${file}`);
+    });
   }
 }
 
@@ -87,25 +208,34 @@ class DenoLispInterpreter {
  * メイン実行関数
  */
 async function main(): Promise<void> {
+  console.log("🚀 Deno Lisp Interpreter Starting...");
+  
   const interpreter = new DenoLispInterpreter();
   
-  // コマンドライン引数処理
+  // コマンドライン引数の処理
   const args = Deno.args;
   
   if (args.length === 0) {
-    // 引数がない場合はステータス表示
-    interpreter.showStatus();
+    // 引数なし：REPLモードで開始
+    await interpreter.startREPL();
   } else {
-    // ファイルパスが指定された場合は読み込み
+    // 引数あり：ファイルを実行
     const filePath = args[0];
-    await interpreter.loadFile(filePath);
+    
+    try {
+      await interpreter.executeFile(filePath);
+      console.log("\n🎉 Execution completed successfully!");
+    } catch (error) {
+      console.error(`\n💥 Execution failed: ${error instanceof Error ? error.message : String(error)}`);
+      Deno.exit(1);
+    }
   }
 }
 
-// スクリプトとして実行された場合のみmain()を呼び出し
+// メイン実行
 if (import.meta.main) {
   main().catch((error) => {
-    console.error("Fatal error:", error);
+    console.error("💥 Fatal error:", error);
     Deno.exit(1);
   });
 }
