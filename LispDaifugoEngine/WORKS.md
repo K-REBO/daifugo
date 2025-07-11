@@ -96,19 +96,51 @@
 - [ ] 🟢 日本大富豪連盟公式ルールセット等
 - [ ] 🔁 ルールセットのリファクタリング
 
-## Phase 7: 包括的テスト・デバッグ
+## Phase 7: Browser UI移行 (browser/ → LispDaifugoEngine/)
 
-### 17. 統合テスト・プレイテスト
+### 17. browser/ゲームエンジン分析・準備
+- [x] 🔴 browser/のLispエンジン依存関係テスト（Playwright MCP使用）
+- [x] 🟢 browser/のJavaScriptUI部分分離
+- [x] 🔁 UI部分のリファクタリング
+
+### 18. LispDaifugoEngine JavaScript API統合
+- [x] 🔴 JavaScript APIとブラウザUI統合テスト
+- [x] 🟢 lisp-engine.jsをLispDaifugoEngine APIで置換  
+- [x] 🔁 統合コードのリファクタリング
+
+### 19. lisp-game-controllerのAPI移行
+- [x] 🔴 LispGameControllerのAPI移行テスト
+- [x] 🟢 LispDaifugoEngine/のAPIを使用するよう変更
+- [x] 🔁 コントローラーのリファクタリング
+
+### 20. ゲーム状態管理統合
+- [x] 🔴 ゲーム状態管理の統合テスト
+- [x] 🟢 browser/のゲーム状態をLispDaifugoEngine/に統合
+- [x] 🔁 状態管理のリファクタリング
+
+### 21. 動的ルールシステム統合
+- [x] 🔴 動的ルールシステムの統合テスト
+- [x] 🟢 browser/のルールローダーをLispDaifugoEngine/に統合
+- [x] 🔁 ルールシステムのリファクタリング
+
+### 22. 完全動作テスト
+- [x] 🔴 完全システムの動作テスト
+- [x] 🟢 browser/UIとLispDaifugoEngine/の完全統合
+- [x] 🔁 最終調整とリファクタリング
+
+## Phase 8: 包括的テスト・デバッグ
+
+### 23. 統合テスト・プレイテスト
 - [ ] 🔴 統合テストの作成
 - [ ] 🟢 全体システムのテスト
 - [ ] 🔁 テストカバレッジの向上
 
-### 18. 大規模自動テスト
+### 24. 大規模自動テスト
 - [ ] 🔴 大規模テストの作成
 - [ ] 🟢 大量ゲーム自動実行テスト
 - [ ] 🔁 テスト結果分析と改善
 
-### 19. 性能最適化
+### 25. 性能最適化
 - [ ] 🔴 性能テストの作成
 - [ ] 🟢 性能改善の実装
 - [ ] 🔁 最適化のリファクタリング
