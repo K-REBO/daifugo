@@ -89,6 +89,15 @@ export class BasicEvaluator {
     this.globalEnv.define("symbolp", { type: "builtin", name: "symbolp", fn: this.symbolp.bind(this) } as LispBuiltin);
     this.globalEnv.define("string=", { type: "builtin", name: "string=", fn: this.stringEqual.bind(this) } as LispBuiltin);
     this.globalEnv.define("symbol-name", { type: "builtin", name: "symbol-name", fn: this.symbolName.bind(this) } as LispBuiltin);
+    this.globalEnv.define("make-hash-table", { type: "builtin", name: "make-hash-table", fn: this.makeHashTable.bind(this) } as LispBuiltin);
+    this.globalEnv.define("format", { type: "builtin", name: "format", fn: this.format.bind(this) } as LispBuiltin);
+    this.globalEnv.define("funcall", { type: "builtin", name: "funcall", fn: this.funcall.bind(this) } as LispBuiltin);
+    this.globalEnv.define("every", { type: "builtin", name: "every", fn: this.every.bind(this) } as LispBuiltin);
+    this.globalEnv.define("length", { type: "builtin", name: "length", fn: this.length.bind(this) } as LispBuiltin);
+    this.globalEnv.define("count", { type: "builtin", name: "count", fn: this.count.bind(this) } as LispBuiltin);
+    this.globalEnv.define("car", { type: "builtin", name: "car", fn: this.car.bind(this) } as LispBuiltin);
+    this.globalEnv.define("cdr", { type: "builtin", name: "cdr", fn: this.cdr.bind(this) } as LispBuiltin);
+    this.globalEnv.define("incf", { type: "builtin", name: "incf", fn: this.incf.bind(this) } as LispBuiltin);
     
     // 論理値
     this.globalEnv.define("t", true);
@@ -145,8 +154,16 @@ export class BasicEvaluator {
             return this.evaluateDefun(expr, env);
           case "defparameter":
             return this.evaluateDefparameter(expr, env);
+          case "defvar":
+            return this.evaluateDefvar(expr, env);
           case "let":
             return this.evaluateLet(expr, env);
+          case "dolist":
+            return this.evaluateDolist(expr, env);
+          case "handler-case":
+            return this.evaluateHandlerCase(expr, env);
+          case "progn":
+            return this.evaluateProgn(expr, env);
           case "quote":
             return expr[1];
           case "and":
@@ -544,6 +561,28 @@ export class BasicEvaluator {
     return name;
   }
 
+  private evaluateDefvar(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length !== 2 && expr.length !== 3 && expr.length !== 4) {
+      throw new Error("defvar requires 1, 2, or 3 arguments");
+    }
+
+    const name = expr[1];
+    const value = expr.length >= 3 ? expr[2] : null;
+    const docstring = expr.length === 4 ? expr[3] : null;
+
+    if (!this.isSymbol(name)) {
+      throw new Error("defvar name must be a symbol");
+    }
+
+    // defvarは変数が既に存在する場合は再定義しない
+    if (!env.has(name.value) && value !== null) {
+      const evaluatedValue = this.evaluate(value, env);
+      env.define(name.value, evaluatedValue);
+    }
+
+    return name;
+  }
+
   /**
    * and式の評価
    */
@@ -616,6 +655,21 @@ export class BasicEvaluator {
   }
 
   /**
+   * make-hash-table関数の実装
+   */
+  private makeHashTable(...args: LispValue[]): LispValue {
+    // 簡単な実装：Mapを使用
+    const hashTable = new Map<string, LispValue>();
+    
+    // hash-tableオブジェクトを表現
+    return {
+      type: "hash-table",
+      map: hashTable,
+      test: "eq" // デフォルトテスト
+    } as any;
+  }
+
+  /**
    * 構造体関数を評価器に登録
    */
   private registerStructFunctions(structName: string): void {
@@ -637,5 +691,219 @@ export class BasicEvaluator {
     // struct-p関数
     const predicate = this.structSystem.getPredicate(structName);
     this.defineSymbol(`${structName}-p`, predicate);
+  }
+
+  /**
+   * format関数の実装
+   */
+  private format(stream: LispValue, control: LispValue, ...args: LispValue[]): LispValue {
+    if (typeof control !== "string") {
+      throw new Error("format control must be a string");
+    }
+    
+    // 簡単な実装：~A、~%を処理
+    let result = control;
+    let argIndex = 0;
+    
+    result = result.replace(/~A/g, () => {
+      if (argIndex < args.length) {
+        const arg = args[argIndex++];
+        if (typeof arg === "string") return arg;
+        if (typeof arg === "number") return arg.toString();
+        if (this.isSymbol(arg)) return arg.value;
+        return JSON.stringify(arg);
+      }
+      return "";
+    });
+    
+    result = result.replace(/~%/g, "\n");
+    
+    if (stream === true || stream === { type: "symbol", value: "t" }) {
+      console.log(result);
+      return null;
+    }
+    
+    return result;
+  }
+
+  /**
+   * funcall関数の実装
+   */
+  private funcall(fn: LispValue, ...args: LispValue[]): LispValue {
+    if (this.isFunction(fn)) {
+      return this.callUserFunction(fn, args, this.globalEnv);
+    }
+    if (this.isBuiltin(fn)) {
+      return fn.fn(...args);
+    }
+    if (this.isSymbol(fn)) {
+      const func = this.globalEnv.get(fn.value);
+      return this.funcall(func, ...args);
+    }
+    throw new Error(`Cannot call ${JSON.stringify(fn)}`);
+  }
+
+  /**
+   * every関数の実装
+   */
+  private every(predicate: LispValue, ...sequences: LispValue[]): LispValue {
+    if (sequences.length === 0) return true;
+    
+    const seq = sequences[0];
+    if (!Array.isArray(seq)) {
+      throw new Error("every requires a sequence");
+    }
+    
+    for (const item of seq) {
+      const result = this.funcall(predicate, item);
+      if (!result) return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * length関数の実装
+   */
+  private length(sequence: LispValue): number {
+    if (Array.isArray(sequence)) {
+      return sequence.length;
+    }
+    if (typeof sequence === "string") {
+      return sequence.length;
+    }
+    throw new Error("length requires a sequence");
+  }
+
+  /**
+   * count関数の実装
+   */
+  private count(item: LispValue, sequence: LispValue, options?: any): number {
+    if (!Array.isArray(sequence)) {
+      throw new Error("count requires a sequence");
+    }
+    
+    let count = 0;
+    for (const seqItem of sequence) {
+      if (this.eql(item, seqItem)) {
+        count++;
+      }
+    }
+    
+    return count;
+  }
+
+  /**
+   * dolist特殊フォームの実装
+   */
+  private evaluateDolist(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length !== 3) {
+      throw new Error("dolist requires exactly 2 arguments");
+    }
+    
+    const spec = expr[1];
+    const body = expr[2];
+    
+    if (!Array.isArray(spec) || spec.length !== 2) {
+      throw new Error("dolist spec must be (var list)");
+    }
+    
+    const varName = spec[0];
+    const listExpr = spec[1];
+    
+    if (!this.isSymbol(varName)) {
+      throw new Error("dolist variable must be a symbol");
+    }
+    
+    const list = this.evaluate(listExpr, env);
+    if (!Array.isArray(list)) {
+      throw new Error("dolist requires a list");
+    }
+    
+    const newEnv = new Environment(env);
+    let result: LispValue = null;
+    
+    for (const item of list) {
+      newEnv.define(varName.value, item);
+      result = this.evaluate(body, newEnv);
+    }
+    
+    return result;
+  }
+
+  /**
+   * handler-case特殊フォームの実装（簡単版）
+   */
+  private evaluateHandlerCase(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 2) {
+      throw new Error("handler-case requires at least 1 argument");
+    }
+    
+    const body = expr[1];
+    
+    try {
+      return this.evaluate(body, env);
+    } catch (error) {
+      // エラーハンドラーがあれば処理、なければfalseを返す
+      if (expr.length > 2) {
+        // 簡単な実装：エラーハンドラーの最初の式を評価
+        const handler = expr[2];
+        if (Array.isArray(handler) && handler.length > 1) {
+          return this.evaluate(handler[1], env);
+        }
+      }
+      return false;
+    }
+  }
+
+  /**
+   * progn特殊フォームの実装
+   */
+  private evaluateProgn(expr: LispValue[], env: Environment): LispValue {
+    let result: LispValue = null;
+    
+    for (let i = 1; i < expr.length; i++) {
+      result = this.evaluate(expr[i], env);
+    }
+    
+    return result;
+  }
+
+  /**
+   * car関数の実装
+   */
+  private car(list: LispValue): LispValue {
+    if (!Array.isArray(list)) {
+      throw new Error("car requires a list");
+    }
+    return list.length > 0 ? list[0] : null;
+  }
+
+  /**
+   * cdr関数の実装
+   */
+  private cdr(list: LispValue): LispValue {
+    if (!Array.isArray(list)) {
+      throw new Error("cdr requires a list");
+    }
+    return list.length > 0 ? list.slice(1) : [];
+  }
+
+  /**
+   * incf関数の実装（マクロ的な機能）
+   */
+  private incf(place: LispValue, delta: LispValue = 1): LispValue {
+    if (!this.isSymbol(place)) {
+      throw new Error("incf requires a symbol");
+    }
+    
+    const current = this.globalEnv.get(place.value);
+    if (typeof current !== "number") {
+      throw new Error("incf requires a numeric variable");
+    }
+    
+    const newValue = current + (typeof delta === "number" ? delta : 1);
+    this.globalEnv.define(place.value, newValue);
+    return newValue;
   }
 }

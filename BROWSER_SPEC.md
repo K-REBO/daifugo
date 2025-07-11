@@ -9,21 +9,19 @@
 ## 技術構成
 
 ### フロントエンド
-- HTML5 + Tailwind CSS + Vanilla JavaScript
+- HTML5 + Tailwind CSS + Vanilla JavaScript + WebAssembly(rust_lisp + wasm-bindgen)
 - DOM操作ベースのカード表示（Canvas不使用）
 - レスポンシブデザイン対応
 
 ### ゲームエンジン連携
-- 既存のLispルールエンジン（`src/`）をブラウザで実行
+- 既存のLispルールエンジン（`LispGameEngine`）をwasm-bindgen上のrust_lispによってブラウザで実行
 - .lispファイルによる柔軟なルール設定
-- ルールエンジンのブラウザ移植
 
 ### 将来拡張
 - WebSocket対応（リアルタイムマルチプレイ）
-- Node.jsサーバーサイド実装
-
+- CPU対戦からマルチプレイへ移行可能な設計
+- 
 ## ゲーム仕様
-
 ### 基本設定
 - **プレイヤー数**: 3-20人（可変設定）
 - **カード**: 標準52枚 + ジョーカー2枚
@@ -115,66 +113,7 @@
 
 ## 開発フェーズ
 
-### Phase 1: 基本ゲーム（3-6人対応）
-- [ ] Tailwind CSS セットアップ
-- [ ] 3-20人可変プレイヤー数対応
-- [ ] カード管理システム
-- [ ] 基本的な出し/パス判定
-- [ ] 革命・8切りのデフォルト実装
-- [ ] 初級CPU実装
-- [ ] レスポンシブUI基盤
 
-### Phase 2: ルール拡張システム
-- [ ] Lispルールエンジンをブラウザに移植
-- [ ] .lispファイル読み込み機能
-- [ ] ルール設定UI実装
-- [ ] 縛り・階段等の追加ルール
-- [ ] 中級・上級CPU実装
-
-### Phase 3: 大富豪システム & 拡張性
-- [ ] 身分システム実装
-- [ ] カード交換機能
-- [ ] 7-20人対応UI改善
-- [ ] WebSocket準備（インターフェース設計）
-- [ ] パフォーマンス最適化
-
-## ファイル構成
-```
-browser/
-├── index.html              # メインページ
-├── package.json            # Tailwind設定
-├── tailwind.config.js      # Tailwind設定
-├── css/
-│   ├── input.css          # Tailwind入力ファイル  
-│   └── output.css         # Tailwind生成CSS
-├── js/
-│   ├── game.js            # ゲーム進行管理
-│   ├── player.js          # プレイヤー管理（3-20人対応）
-│   ├── cpu/               # CPU思考ロジック
-│   │   ├── easy.js        # 初級AI
-│   │   ├── medium.js      # 中級AI
-│   │   └── hard.js        # 上級AI
-│   ├── ui/                # UI関連
-│   │   ├── layout.js      # レイアウト管理
-│   │   ├── cards.js       # カード表示
-│   │   └── settings.js    # 設定画面
-│   ├── rules/             # ルールエンジン
-│   │   ├── engine.js      # Lispエンジン移植
-│   │   ├── parser.js      # S式パーサー移植
-│   │   └── evaluator.js   # 評価器移植
-│   └── utils/
-│       └── websocket.js   # 将来の拡張用
-├── rules/                 # ルール定義ファイル
-│   ├── basic.lisp         # 基本ルール
-│   ├── revolution.lisp    # 革命ルール
-│   ├── eight-cut.lisp     # 8切りルール
-│   ├── binding.lisp       # 縛りルール
-│   ├── stairs.lisp        # 階段ルール
-│   └── local/             # ローカルルール集
-│       ├── spade3.lisp    # スペ3返し
-│       └── eleven-back.lisp # イレブンバック
-└── assets/
-    └── icons/             # アイコン・画像
 ```
 
 ## パフォーマンス要件
@@ -211,5 +150,3 @@ browser/
 - **ビルド**: Tailwind CSS自動化
 
 ---
-
-**仕様確定完了** ✅ TDD開発開始準備完了

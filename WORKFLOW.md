@@ -1,12 +1,9 @@
 # WORKFLOW.md
-
 ## 🎯 目的
-
 - t-wada式のTDD（Red → Green → Refactor）を厳密に実施する
 - WORKS.md に段階式のTODOを書き、これを元に開発する
-- GitHub Issue を起点とした並列開発（`git worktree`）を行う
+- GitHub Issue を起点とした開発を行う
 - ClaudeなどのLLMがルールに従い一貫した開発ができることを目的とする
-
 ---
 
 ## 🛠 あなたが行うべき手順
@@ -65,5 +62,4 @@ git worktree remove ../<proj>-<task>
 ## 📄 参考情報（既定の環境）
 
 * CIはGitHub Actionsで自動実行される
-* `.gitignore`, テストランナー, `w.sh`（worktree起動スクリプト）などは初期状態で整備済
 * Issue → WORKS.md → TDD → PR という流れを守れば、誰でも同じ成果が得られる

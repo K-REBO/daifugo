@@ -98,6 +98,3 @@
     
     (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
     (= failed 0)))
-
-;; テスト実行（失敗することが期待される）
-(run-card-system-tests)

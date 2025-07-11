@@ -15,5 +15,6 @@ WORKS.mdにtodoを追記
 ---
 
 ## ⛳ 作業指示（よく使うコマンド）
-### テスト → 実装 → リファクタリング
-
+- **テスト**: Playwright MCP利用し、ユーザに直接確認させる前に、動作を確認する。
+- **ローカル**: `python -m http.server 8080`
+- **make**: `just css` でTailwind CSSビルド
