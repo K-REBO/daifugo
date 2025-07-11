@@ -51,22 +51,35 @@ class DenoLispInterpreter {
   showStatus(): void {
     console.log("\n=== Deno Lisp Interpreter Status ===");
     console.log(`Version: ${this.version}`);
-    console.log(`Deno: ${Deno.version.deno}`);
-    console.log(`TypeScript: ${Deno.version.typescript}`);
-    console.log(`V8: ${Deno.version.v8}`);
+    console.log(`Runtime: Deno ${Deno.version.deno} (TypeScript ${Deno.version.typescript})`);
+    
+    const features = [
+      { name: "S-expression parsing", implemented: false },
+      { name: "Symbol evaluation", implemented: false },
+      { name: "Function definition (defun)", implemented: false },
+      { name: "Struct system (defstruct)", implemented: false },
+      { name: "Package system (defpackage)", implemented: false },
+      { name: "File loading", implemented: true },
+    ];
     
     console.log("\nImplemented features:");
-    console.log("  ❌ S-expression parsing");
-    console.log("  ❌ Symbol evaluation");
-    console.log("  ❌ Function definition (defun)");
-    console.log("  ❌ Struct system (defstruct)");
-    console.log("  ❌ Package system (defpackage)");
-    console.log("  ✅ File loading");
+    features.forEach(({ name, implemented }) => {
+      console.log(`  ${implemented ? "✅" : "❌"} ${name}`);
+    });
+    
+    const targetFiles = [
+      "LispDaifugoEngine/src/core/card-system.lisp",
+      "LispDaifugoEngine/src/core/game-engine.lisp",
+      "LispDaifugoEngine/src/rules/*.lisp",
+    ];
     
     console.log("\nTarget Lisp files:");
-    console.log("  - LispDaifugoEngine/src/core/card-system.lisp");
-    console.log("  - LispDaifugoEngine/src/core/game-engine.lisp");
-    console.log("  - LispDaifugoEngine/src/rules/*.lisp");
+    targetFiles.forEach(file => console.log(`  - ${file}`));
+    
+    const implementedCount = features.filter(f => f.implemented).length;
+    const totalCount = features.length;
+    const progress = Math.round((implementedCount / totalCount) * 100);
+    console.log(`\nProgress: ${implementedCount}/${totalCount} features (${progress}%)`);
   }
 }
 
