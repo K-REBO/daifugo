@@ -467,3 +467,87 @@ Deno.test("Evaluate error handling", () => {
   const conditionalErrorResult = evaluator.evaluate(conditionalErrorExpr);
   assertEquals(conditionalErrorResult.value, "conditional-handled");
 });
+
+Deno.test("Evaluate symbol operations", () => {
+  // シンボル操作の評価テスト
+  const evaluator = new BasicEvaluator();
+  const parser = new SExpressionParser();
+  
+  // intern関数のテスト - 基本的なシンボル作成
+  const internExpr = parser.parse("(intern \"TEST-SYMBOL\")");
+  const internResult = evaluator.evaluate(internExpr);
+  assertEquals(internResult.type, "symbol");
+  assertEquals(internResult.value, "TEST-SYMBOL");
+  
+  // intern関数のテスト - 同じシンボルは同一オブジェクト
+  const internExpr2 = parser.parse("(intern \"TEST-SYMBOL\")");
+  const internResult2 = evaluator.evaluate(internExpr2);
+  assertEquals(internResult === internResult2, true); // 同一参照
+  
+  // intern関数のテスト - パッケージ指定
+  const internPackageExpr = parser.parse("(intern \"SYMBOL\" \"COMMON-LISP-USER\")");
+  const internPackageResult = evaluator.evaluate(internPackageExpr);
+  assertEquals(internPackageResult.type, "symbol");
+  assertEquals(internPackageResult.value, "SYMBOL");
+  
+  // make-symbol関数のテスト - 非インターンシンボル
+  const makeSymbolExpr = parser.parse("(make-symbol \"UNINTERNED\")");
+  const makeSymbolResult = evaluator.evaluate(makeSymbolExpr);
+  assertEquals(makeSymbolResult.type, "symbol");
+  assertEquals(makeSymbolResult.value, "UNINTERNED");
+  
+  // 同名でもmake-symbolは異なるオブジェクト
+  const makeSymbolExpr2 = parser.parse("(make-symbol \"UNINTERNED\")");
+  const makeSymbolResult2 = evaluator.evaluate(makeSymbolExpr2);
+  assertEquals(makeSymbolResult === makeSymbolResult2, false); // 異なる参照
+  
+  // symbol-name関数のテスト
+  const symbolNameExpr = parser.parse("(symbol-name (intern \"NAME-TEST\"))");
+  const symbolNameResult = evaluator.evaluate(symbolNameExpr);
+  assertEquals(symbolNameResult, "NAME-TEST");
+  
+  // symbol-package関数のテスト
+  const symbolPackageExpr = parser.parse("(symbol-package (intern \"PKG-TEST\"))");
+  const symbolPackageResult = evaluator.evaluate(symbolPackageExpr);
+  assertEquals(symbolPackageResult.type, "symbol");
+  assertEquals(symbolPackageResult.value, "COMMON-LISP-USER");
+  
+  // find-symbol関数のテスト - 存在するシンボル
+  evaluator.evaluate(parser.parse("(intern \"FIND-TEST\")"));
+  const findSymbolExpr = parser.parse("(find-symbol \"FIND-TEST\")");
+  const findSymbolResult = evaluator.evaluate(findSymbolExpr);
+  assertEquals(findSymbolResult.type, "symbol");
+  assertEquals(findSymbolResult.value, "FIND-TEST");
+  
+  // find-symbol関数のテスト - 存在しないシンボル
+  const findSymbolMissingExpr = parser.parse("(find-symbol \"NONEXISTENT\")");
+  const findSymbolMissingResult = evaluator.evaluate(findSymbolMissingExpr);
+  assertEquals(findSymbolMissingResult, null);
+  
+  // symbolp関数のテスト（既存機能の確認）
+  const symbolpExpr = parser.parse("(symbolp (intern \"SYMBOLP-TEST\"))");
+  const symbolpResult = evaluator.evaluate(symbolpExpr);
+  assertEquals(symbolpResult, true);
+  
+  const symbolpNonSymbolExpr = parser.parse("(symbolp \"not-a-symbol\")");
+  const symbolpNonSymbolResult = evaluator.evaluate(symbolpNonSymbolExpr);
+  assertEquals(symbolpNonSymbolResult, false);
+  
+  // gensym関数のテスト - 一意シンボル生成
+  const gensymExpr = parser.parse("(gensym)");
+  const gensymResult = evaluator.evaluate(gensymExpr);
+  assertEquals(gensymResult.type, "symbol");
+  assertEquals(gensymResult.value.startsWith("#:G"), true);
+  
+  // gensym with prefix
+  const gensymPrefixExpr = parser.parse("(gensym \"PREFIX\")");
+  const gensymPrefixResult = evaluator.evaluate(gensymPrefixExpr);
+  assertEquals(gensymPrefixResult.type, "symbol");
+  assertEquals(gensymPrefixResult.value.startsWith("#:PREFIX"), true);
+  
+  // gensymで生成されるシンボルは常に異なる
+  const gensymExpr2 = parser.parse("(gensym)");
+  const gensymResult2 = evaluator.evaluate(gensymExpr2);
+  assertEquals(gensymResult === gensymResult2, false);
+  assertEquals(gensymResult.value !== gensymResult2.value, true);
+});

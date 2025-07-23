@@ -1,6 +1,7 @@
 // basic-evaluator.ts - 基本評価器実装
 
 import { LispValue, LispSymbol, LispKeyword, LispQuote, LispFunction, LispBuiltin } from "../parser/s-expression-parser.ts";
+import { SymbolTable, Symbol } from "../core/symbol-table.ts";
 
 /**
  * 環境（変数と関数のスコープ）
@@ -48,9 +49,13 @@ export class Environment {
 export class BasicEvaluator {
   private globalEnv: Environment;
   private structSystem: any = null;
+  private symbolTable: SymbolTable;
+  private gensymCounter: number = 0;
+  private symbolCache: Map<string, LispValue> = new Map();
 
   constructor() {
     this.globalEnv = new Environment();
+    this.symbolTable = new SymbolTable();
     this.initializeBuiltins();
   }
 
@@ -103,6 +108,13 @@ export class BasicEvaluator {
     this.globalEnv.define("cdr", { type: "builtin", name: "cdr", fn: this.cdr.bind(this) } as LispBuiltin);
     this.globalEnv.define("incf", { type: "builtin", name: "incf", fn: this.incf.bind(this) } as LispBuiltin);
     this.globalEnv.define("error", { type: "builtin", name: "error", fn: this.error.bind(this) } as LispBuiltin);
+    
+    // シンボル操作関数
+    this.globalEnv.define("intern", { type: "builtin", name: "intern", fn: this.intern.bind(this) } as LispBuiltin);
+    this.globalEnv.define("make-symbol", { type: "builtin", name: "make-symbol", fn: this.makeSymbol.bind(this) } as LispBuiltin);
+    this.globalEnv.define("symbol-package", { type: "builtin", name: "symbol-package", fn: this.symbolPackage.bind(this) } as LispBuiltin);
+    this.globalEnv.define("find-symbol", { type: "builtin", name: "find-symbol", fn: this.findSymbol.bind(this) } as LispBuiltin);
+    this.globalEnv.define("gensym", { type: "builtin", name: "gensym", fn: this.gensym.bind(this) } as LispBuiltin);
     
     // 論理値
     this.globalEnv.define("t", true);
@@ -1295,5 +1307,114 @@ export class BasicEvaluator {
     if (this.isSymbol(value)) return value.value;
     if (this.isKeyword(value)) return `:${value.value}`;
     return JSON.stringify(value);
+  }
+
+  // === Symbol System Helper Methods ===
+  
+  /**
+   * 文字列引数の検証
+   */
+  private validateStringArgument(value: LispValue, functionName: string, argPosition: string = "first"): string {
+    if (typeof value !== "string") {
+      throw new Error(`${functionName} ${argPosition} argument must be a string`);
+    }
+    return value;
+  }
+  
+  /**
+   * 非インターンシンボルの作成
+   */
+  private createUninternedSymbol(name: string): LispSymbol {
+    return {
+      type: "symbol",
+      value: name,
+      package: null,
+      interned: false
+    } as LispSymbol;
+  }
+
+  /**
+   * intern関数の実装
+   * 文字列をシンボルに変換し、シンボルテーブルに登録
+   */
+  private intern(name: LispValue, packageName?: LispValue): LispValue {
+    const nameStr = this.validateStringArgument(name, "intern");
+
+    // パッケージ指定がある場合の処理は簡略化
+    if (packageName !== undefined) {
+      this.validateStringArgument(packageName, "intern", "second");
+    }
+
+    const symbol = this.symbolTable.intern(nameStr);
+    return this.symbolToLispValue(symbol);
+  }
+
+  /**
+   * make-symbol関数の実装
+   * 非インターンシンボルを作成
+   */
+  private makeSymbol(name: LispValue): LispValue {
+    const nameStr = this.validateStringArgument(name, "make-symbol");
+    return this.createUninternedSymbol(nameStr);
+  }
+
+  /**
+   * symbol-package関数の実装
+   * シンボルのパッケージを返す
+   */
+  private symbolPackage(symbol: LispValue): LispValue {
+    if (!this.isSymbol(symbol)) {
+      throw new Error("symbol-package argument must be a symbol");
+    }
+
+    // 簡略化：すべてのシンボルはcommon-lisp-userパッケージに属するとする
+    return {
+      type: "symbol",
+      value: "COMMON-LISP-USER"
+    } as LispSymbol;
+  }
+
+  /**
+   * find-symbol関数の実装
+   * シンボルテーブルからシンボルを検索
+   */
+  private findSymbol(name: LispValue, packageName?: LispValue): LispValue {
+    const nameStr = this.validateStringArgument(name, "find-symbol");
+
+    const symbol = this.symbolTable.lookup(nameStr);
+    return symbol ? this.symbolToLispValue(symbol) : null;
+  }
+
+  /**
+   * gensym関数の実装
+   * 一意な非インターンシンボルを生成
+   */
+  private gensym(prefix?: LispValue): LispValue {
+    const prefixStr = prefix && typeof prefix === "string" ? prefix : "G";
+    const uniqueName = `#:${prefixStr}${this.gensymCounter++}`;
+    return this.createUninternedSymbol(uniqueName);
+  }
+
+  /**
+   * SymbolTableのSymbolをLispValueに変換
+   */
+  private symbolToLispValue(symbol: Symbol): LispValue {
+    const symbolName = symbol.name;
+    
+    // キャッシュから検索
+    if (this.symbolCache.has(symbolName)) {
+      return this.symbolCache.get(symbolName)!;
+    }
+    
+    // 新しいLispValueを作成してキャッシュに保存
+    const lispValue = {
+      type: "symbol",
+      value: symbolName,
+      package: null,
+      interned: true
+    } as LispSymbol;
+    
+    this.symbolCache.set(symbolName, lispValue);
+    return lispValue;
   }
 }
