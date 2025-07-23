@@ -214,6 +214,12 @@ export class BasicEvaluator {
             return this.evaluateDefpackage(expr, env);
           case "in-package":
             return this.evaluateInPackage(expr, env);
+          case "defvar":
+            return this.evaluateDefvar(expr, env);
+          case "defun":
+            return this.evaluateDefun(expr, env); 
+          case "case":
+            return this.evaluateCase(expr, env);
         }
       }
 
@@ -1548,5 +1554,164 @@ export class BasicEvaluator {
     this.packageSystem.setCurrentPackage(packageName);
     
     return this.createPackageResult(packageName);
+  }
+
+  // === Additional Special Forms ===
+  
+  /**
+   * シンボル引数の検証とヘルパー
+   */
+  private validateSymbolArgument(expr: LispValue, functionName: string, position: string = "argument"): string {
+    if (!this.isSymbol(expr)) {
+      throw new Error(`${functionName} ${position} must be a symbol`);
+    }
+    return expr.value;
+  }
+  
+  /**
+   * シンボル結果の作成
+   */
+  private createSymbolResult(symbolName: string): LispSymbol {
+    return {
+      type: "symbol",
+      value: symbolName
+    } as LispSymbol;
+  }
+  
+  /**
+   * defvar式の評価
+   * グローバル変数定義
+   */
+  private evaluateDefvar(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 2) {
+      throw new Error("defvar requires at least a variable name");
+    }
+    
+    const varName = this.validateSymbolArgument(expr[1], "defvar", "variable name");
+    const initialValue = expr.length > 2 ? this.evaluate(expr[2], env) : null;
+    
+    // グローバル環境に定義
+    this.globalEnv.define(varName, initialValue);
+    
+    return this.createSymbolResult(varName);
+  }
+  
+  /**
+   * パラメータリストを解析してパラメータ名を抽出
+   */
+  private extractParameterNames(parameters: LispValue): string[] {
+    const paramNames: string[] = [];
+    if (Array.isArray(parameters)) {
+      for (const param of parameters) {
+        if (this.isSymbol(param)) {
+          paramNames.push(param.value);
+        }
+      }
+    }
+    return paramNames;
+  }
+  
+  /**
+   * 関数本体を正規化（単一式はそのまま、複数式はprognでラップ）
+   */
+  private normalizeFunctionBody(body: LispValue[]): LispValue {
+    if (body.length === 0) {
+      return null;
+    } else if (body.length === 1) {
+      return body[0];
+    } else {
+      return [{ type: "symbol", value: "progn" }, ...body];
+    }
+  }
+  
+  /**
+   * defun式の評価
+   * 関数定義
+   */
+  private evaluateDefun(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 3) {
+      throw new Error("defun requires function name, parameters, and body");
+    }
+    
+    const functionName = this.validateSymbolArgument(expr[1], "defun", "function name");
+    const parameters = expr[2];
+    const body = expr.slice(3);
+    
+    // 関数オブジェクトを作成
+    const fn: LispFunction = {
+      type: "function",
+      params: this.extractParameterNames(parameters),
+      body: this.normalizeFunctionBody(body),
+      closure: env
+    };
+    
+    // グローバル環境に登録
+    this.globalEnv.define(functionName, fn);
+    
+    return this.createSymbolResult(functionName);
+  }
+  
+  /**
+   * case式の評価
+   * 条件分岐
+   */
+  private evaluateCase(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 2) {
+      throw new Error("case requires at least a key expression");
+    }
+    
+    const keyValue = this.evaluate(expr[1], env);
+    const clauses = expr.slice(2);
+    
+    for (const clause of clauses) {
+      if (!Array.isArray(clause) || clause.length < 2) {
+        continue;
+      }
+      
+      const keys = clause[0];
+      const forms = clause.slice(1);
+      
+      // t または otherwise は常にマッチ
+      if (this.isSymbol(keys) && (keys.value === "t" || keys.value === "otherwise")) {
+        return this.evaluateProgn([{ type: "symbol", value: "progn" }, ...forms], env);
+      }
+      
+      // キーリストとマッチするかチェック
+      let matches = false;
+      if (Array.isArray(keys)) {
+        matches = keys.some(key => this.lispEqual(keyValue, key));
+      } else {
+        matches = this.lispEqual(keyValue, keys);
+      }
+      
+      if (matches) {
+        return this.evaluateProgn([{ type: "symbol", value: "progn" }, ...forms], env);
+      }
+    }
+    
+    return null; // マッチしない場合はnil
+  }
+  
+  /**
+   * Lisp値の等価性比較
+   */
+  private lispEqual(value1: LispValue, value2: LispValue): boolean {
+    if (typeof value1 !== typeof value2) {
+      return false;
+    }
+    
+    if (typeof value1 === "string" || typeof value1 === "number" || typeof value1 === "boolean") {
+      return value1 === value2;
+    }
+    
+    if (this.isSymbol(value1) && this.isSymbol(value2)) {
+      return value1.value === value2.value;
+    }
+    
+    if (this.isKeyword(value1) && this.isKeyword(value2)) {
+      return value1.value === value2.value;
+    }
+    
+    return false;
   }
 }
