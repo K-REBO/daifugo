@@ -90,14 +90,19 @@ export class BasicEvaluator {
     this.globalEnv.define("string=", { type: "builtin", name: "string=", fn: this.stringEqual.bind(this) } as LispBuiltin);
     this.globalEnv.define("symbol-name", { type: "builtin", name: "symbol-name", fn: this.symbolName.bind(this) } as LispBuiltin);
     this.globalEnv.define("make-hash-table", { type: "builtin", name: "make-hash-table", fn: this.makeHashTable.bind(this) } as LispBuiltin);
+    this.globalEnv.define("gethash", { type: "builtin", name: "gethash", fn: this.gethash.bind(this) } as LispBuiltin);
     this.globalEnv.define("format", { type: "builtin", name: "format", fn: this.format.bind(this) } as LispBuiltin);
     this.globalEnv.define("funcall", { type: "builtin", name: "funcall", fn: this.funcall.bind(this) } as LispBuiltin);
     this.globalEnv.define("every", { type: "builtin", name: "every", fn: this.every.bind(this) } as LispBuiltin);
+    this.globalEnv.define("mapcar", { type: "builtin", name: "mapcar", fn: this.mapcar.bind(this) } as LispBuiltin);
+    this.globalEnv.define("some", { type: "builtin", name: "some", fn: this.some.bind(this) } as LispBuiltin);
+    this.globalEnv.define("remove-if", { type: "builtin", name: "remove-if", fn: this.removeIf.bind(this) } as LispBuiltin);
     this.globalEnv.define("length", { type: "builtin", name: "length", fn: this.length.bind(this) } as LispBuiltin);
     this.globalEnv.define("count", { type: "builtin", name: "count", fn: this.count.bind(this) } as LispBuiltin);
     this.globalEnv.define("car", { type: "builtin", name: "car", fn: this.car.bind(this) } as LispBuiltin);
     this.globalEnv.define("cdr", { type: "builtin", name: "cdr", fn: this.cdr.bind(this) } as LispBuiltin);
     this.globalEnv.define("incf", { type: "builtin", name: "incf", fn: this.incf.bind(this) } as LispBuiltin);
+    this.globalEnv.define("error", { type: "builtin", name: "error", fn: this.error.bind(this) } as LispBuiltin);
     
     // 論理値
     this.globalEnv.define("t", true);
@@ -150,6 +155,10 @@ export class BasicEvaluator {
             return this.evaluateIf(expr, env);
           case "cond":
             return this.evaluateCond(expr, env);
+          case "when":
+            return this.evaluateWhen(expr, env);
+          case "unless":
+            return this.evaluateUnless(expr, env);
           case "defun":
             return this.evaluateDefun(expr, env);
           case "defparameter":
@@ -160,6 +169,10 @@ export class BasicEvaluator {
             return this.evaluateLet(expr, env);
           case "dolist":
             return this.evaluateDolist(expr, env);
+          case "dotimes":
+            return this.evaluateDotimes(expr, env);
+          case "lambda":
+            return this.evaluateLambda(expr, env);
           case "handler-case":
             return this.evaluateHandlerCase(expr, env);
           case "progn":
@@ -170,6 +183,8 @@ export class BasicEvaluator {
             return this.evaluateAnd(expr, env);
           case "or":
             return this.evaluateOr(expr, env);
+          case "setf":
+            return this.evaluateSetf(expr, env);
           case "defstruct":
             return this.evaluateDefstruct(expr, env);
         }
@@ -238,16 +253,8 @@ export class BasicEvaluator {
       newEnv.define(func.params[i], args[i]);
     }
 
-    // 関数本体が配列の場合（複数の式）
-    if (Array.isArray(func.body)) {
-      let result: LispValue = null;
-      for (const expr of func.body) {
-        result = this.evaluate(expr, newEnv);
-      }
-      return result;
-    } else {
-      return this.evaluate(func.body, newEnv);
-    }
+    // 関数本体の評価
+    return this.evaluate(func.body, newEnv);
   }
 
   /**
@@ -292,6 +299,53 @@ export class BasicEvaluator {
     }
     
     return null;
+  }
+
+  /**
+   * when式の評価
+   */
+  private evaluateWhen(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 2) {
+      throw new Error("when requires at least 1 argument");
+    }
+
+    const condition = expr[1];
+    const body = expr.slice(2);
+
+    if (this.isTruthy(this.evaluate(condition, env))) {
+      return this.evaluateSequence(body, env);
+    }
+
+    return null;
+  }
+
+  /**
+   * unless式の評価
+   */
+  private evaluateUnless(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 2) {
+      throw new Error("unless requires at least 1 argument");
+    }
+
+    const condition = expr[1];
+    const body = expr.slice(2);
+
+    if (!this.isTruthy(this.evaluate(condition, env))) {
+      return this.evaluateSequence(body, env);
+    }
+
+    return null;
+  }
+
+  /**
+   * 複数の式を順番に評価し、最後の結果を返すヘルパーメソッド
+   */
+  private evaluateSequence(expressions: LispValue[], env: Environment): LispValue {
+    let result: LispValue = null;
+    for (const expr of expressions) {
+      result = this.evaluate(expr, env);
+    }
+    return result;
   }
 
   /**
@@ -343,7 +397,7 @@ export class BasicEvaluator {
       closure: env
     };
 
-    env.define(name.value, func);
+    this.globalEnv.define(name.value, func);
     return name;
   }
 
@@ -656,17 +710,65 @@ export class BasicEvaluator {
 
   /**
    * make-hash-table関数の実装
+   * Common Lispハッシュテーブルの基本実装
    */
   private makeHashTable(...args: LispValue[]): LispValue {
-    // 簡単な実装：Mapを使用
+    // 簡単な実装：Mapを使用してハッシュテーブルをシミュレート
     const hashTable = new Map<string, LispValue>();
     
     // hash-tableオブジェクトを表現
     return {
       type: "hash-table",
       map: hashTable,
-      test: "eq" // デフォルトテスト
+      test: "eq" // デフォルトテスト（Common Lispの仕様）
     } as any;
+  }
+
+  /**
+   * gethash関数の実装
+   * ハッシュテーブルからキーに対応する値を取得
+   */
+  private gethash(key: LispValue, hashTable: any, defaultValue?: LispValue): LispValue {
+    if (!this.isHashTable(hashTable)) {
+      throw new Error("gethash second argument must be a hash table");
+    }
+
+    const keyStr = this.hashTableKeyToString(key);
+    const map = hashTable.map as Map<string, LispValue>;
+    
+    if (map.has(keyStr)) {
+      return map.get(keyStr)!;
+    }
+    
+    return defaultValue !== undefined ? defaultValue : null;
+  }
+
+  /**
+   * ハッシュテーブルかどうかをチェック
+   */
+  private isHashTable(value: any): boolean {
+    return value && typeof value === "object" && value.type === "hash-table" && value.map instanceof Map;
+  }
+
+  /**
+   * ハッシュテーブルのキーを内部文字列表現に変換
+   * 異なる型のキーを区別するためにプレフィックスを使用
+   */
+  private hashTableKeyToString(key: LispValue): string {
+    if (typeof key === "string") {
+      return `str:${key}`;
+    }
+    if (typeof key === "number") {
+      return `num:${key}`;
+    }
+    if (this.isSymbol(key)) {
+      return `sym:${key.value}`;
+    }
+    if (this.isKeyword(key)) {
+      return `kwd:${key.value}`;
+    }
+    // その他のオブジェクト型
+    return `obj:${JSON.stringify(key)}`;
   }
 
   /**
@@ -718,7 +820,7 @@ export class BasicEvaluator {
     
     result = result.replace(/~%/g, "\n");
     
-    if (stream === true || stream === { type: "symbol", value: "t" }) {
+    if (stream === true || (this.isSymbol(stream) && stream.value === "t")) {
       console.log(result);
       return null;
     }
@@ -731,7 +833,7 @@ export class BasicEvaluator {
    */
   private funcall(fn: LispValue, ...args: LispValue[]): LispValue {
     if (this.isFunction(fn)) {
-      return this.callUserFunction(fn, args, this.globalEnv);
+      return this.callUserFunction(fn, args);
     }
     if (this.isBuiltin(fn)) {
       return fn.fn(...args);
@@ -756,7 +858,9 @@ export class BasicEvaluator {
     
     for (const item of seq) {
       const result = this.funcall(predicate, item);
-      if (!result) return false;
+      if (!this.isTruthy(result)) {
+        return false;
+      }
     }
     
     return true;
@@ -797,62 +901,180 @@ export class BasicEvaluator {
    * dolist特殊フォームの実装
    */
   private evaluateDolist(expr: LispValue[], env: Environment): LispValue {
+    const { varName, body } = this.parseIterationSpec(expr, "dolist");
+    
+    const listExpr = expr[1][1];
+    const list = this.evaluate(listExpr, env);
+    if (!Array.isArray(list)) {
+      throw new Error("dolist requires a list");
+    }
+    
+    return this.executeIteration(varName, list, body, env);
+  }
+
+  /**
+   * dotimes特殊フォームの実装
+   */
+  private evaluateDotimes(expr: LispValue[], env: Environment): LispValue {
+    const { varName, body } = this.parseIterationSpec(expr, "dotimes");
+    
+    const countExpr = expr[1][1];
+    const count = this.evaluate(countExpr, env);
+    if (typeof count !== "number" || count < 0 || !Number.isInteger(count)) {
+      throw new Error("dotimes count must be a non-negative integer");
+    }
+    
+    const indices = Array.from({ length: count }, (_, i) => i);
+    return this.executeIteration(varName, indices, body, env);
+  }
+
+  /**
+   * 反復構造の仕様解析ヘルパー
+   */
+  private parseIterationSpec(expr: LispValue[], formName: string): { varName: string; body: LispValue } {
     if (expr.length !== 3) {
-      throw new Error("dolist requires exactly 2 arguments");
+      throw new Error(`${formName} requires exactly 2 arguments`);
     }
     
     const spec = expr[1];
     const body = expr[2];
     
     if (!Array.isArray(spec) || spec.length !== 2) {
-      throw new Error("dolist spec must be (var list)");
+      throw new Error(`${formName} spec must be (var ${formName === 'dolist' ? 'list' : 'count'})`);
     }
     
     const varName = spec[0];
-    const listExpr = spec[1];
-    
     if (!this.isSymbol(varName)) {
-      throw new Error("dolist variable must be a symbol");
+      throw new Error(`${formName} variable must be a symbol`);
     }
     
-    const list = this.evaluate(listExpr, env);
-    if (!Array.isArray(list)) {
-      throw new Error("dolist requires a list");
-    }
-    
-    const newEnv = new Environment(env);
-    let result: LispValue = null;
-    
-    for (const item of list) {
-      newEnv.define(varName.value, item);
-      result = this.evaluate(body, newEnv);
-    }
-    
-    return result;
+    return { varName: varName.value, body };
   }
 
   /**
-   * handler-case特殊フォームの実装（簡単版）
+   * 反復実行ヘルパー
+   */
+  private executeIteration(varName: string, values: LispValue[], body: LispValue, env: Environment): LispValue {
+    const newEnv = new Environment(env);
+    
+    for (const value of values) {
+      newEnv.define(varName, value);
+      this.evaluate(body, newEnv);
+    }
+    
+    return null;
+  }
+
+  /**
+   * lambda特殊フォームの実装
+   * 無名関数を作成し、レキシカルクロージャをサポート
+   */
+  private evaluateLambda(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 3) {
+      throw new Error("lambda requires at least 2 arguments: parameters and body");
+    }
+
+    const params = expr[1];
+    const body = expr[2];
+
+    if (!Array.isArray(params)) {
+      throw new Error("lambda parameters must be a list");
+    }
+
+    const paramNames = params.map(param => {
+      if (!this.isSymbol(param)) {
+        throw new Error("lambda parameter must be a symbol");
+      }
+      return param.value;
+    });
+
+    // lambdaは無名関数を作成し、現在の環境をクロージャとして保持
+    const func: LispFunction = {
+      type: "function",
+      params: paramNames,
+      body: body,
+      closure: env
+    };
+
+    return func;
+  }
+
+  /**
+   * handler-case特殊フォームの実装
+   * Common Lispのエラーハンドリング機構の基本実装
    */
   private evaluateHandlerCase(expr: LispValue[], env: Environment): LispValue {
     if (expr.length < 2) {
-      throw new Error("handler-case requires at least 1 argument");
+      throw new Error("handler-case requires at least a body expression");
     }
     
     const body = expr[1];
+    const handlers = expr.slice(2);
     
     try {
       return this.evaluate(body, env);
-    } catch (error) {
-      // エラーハンドラーがあれば処理、なければfalseを返す
-      if (expr.length > 2) {
-        // 簡単な実装：エラーハンドラーの最初の式を評価
-        const handler = expr[2];
-        if (Array.isArray(handler) && handler.length > 1) {
-          return this.evaluate(handler[1], env);
-        }
+    } catch (caughtError) {
+      // 適切なエラーハンドラーを検索して実行
+      const matchedHandler = this.findMatchingErrorHandler(handlers, caughtError);
+      if (matchedHandler) {
+        return this.evaluate(matchedHandler, env);
       }
-      return false;
+      
+      // マッチするハンドラーがない場合はエラーを再発生
+      throw caughtError;
+    }
+  }
+
+  /**
+   * エラーに対応するハンドラーを検索
+   */
+  private findMatchingErrorHandler(handlers: LispValue[], error: any): LispValue | null {
+    for (const handler of handlers) {
+      if (!Array.isArray(handler) || handler.length < 2) {
+        continue;
+      }
+      
+      const errorType = handler[0];
+      const handlerBody = handler[1];
+      
+      if (!this.isSymbol(errorType)) {
+        continue;
+      }
+      
+      // error型は汎用ハンドラー（すべてのエラーをキャッチ）
+      if (errorType.value === "error") {
+        return handlerBody;
+      }
+      
+      // 特定のエラー型のマッチング
+      if (this.matchesErrorType(errorType.value, error)) {
+        return handlerBody;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * エラーが指定された型にマッチするかチェック
+   */
+  private matchesErrorType(errorTypeName: string, error: any): boolean {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    switch (errorTypeName) {
+      case "arithmetic-error":
+        return errorMessage.includes("Division by zero") || 
+               errorMessage.includes("arithmetic") ||
+               errorMessage.includes("requires numeric arguments");
+      
+      case "type-error":
+        return errorMessage.includes("requires") && errorMessage.includes("arguments");
+      
+      case "undefined-variable":
+        return errorMessage.includes("Undefined variable");
+      
+      default:
+        return false;
     }
   }
 
@@ -905,5 +1127,173 @@ export class BasicEvaluator {
     const newValue = current + (typeof delta === "number" ? delta : 1);
     this.globalEnv.define(place.value, newValue);
     return newValue;
+  }
+
+  /**
+   * mapcar関数の実装
+   * 各シーケンスの対応する要素に関数を適用し、結果のリストを返す
+   */
+  private mapcar(fn: LispValue, ...sequences: LispValue[]): LispValue[] {
+    if (sequences.length === 0) {
+      throw new Error("mapcar requires at least one sequence");
+    }
+
+    // すべてのシーケンスの型をチェック
+    for (const seq of sequences) {
+      if (!Array.isArray(seq)) {
+        throw new Error("mapcar requires list arguments");
+      }
+    }
+
+    // 最短のシーケンスの長さを取得（Common Lispの仕様）
+    const minLength = Math.min(...sequences.map(seq => (seq as LispValue[]).length));
+    
+    const results: LispValue[] = [];
+    for (let i = 0; i < minLength; i++) {
+      const args = sequences.map(seq => (seq as LispValue[])[i]);
+      const result = this.funcall(fn, ...args);
+      results.push(result);
+    }
+
+    return results;
+  }
+
+  /**
+   * some関数の実装
+   * シーケンスの要素に述語を適用し、一つでも真なら真を返す
+   */
+  private some(predicate: LispValue, ...sequences: LispValue[]): LispValue {
+    if (sequences.length === 0) return null;
+    
+    const seq = sequences[0];
+    if (!Array.isArray(seq)) {
+      throw new Error("some requires a sequence");
+    }
+    
+    for (const item of seq) {
+      const result = this.funcall(predicate, item);
+      if (this.isTruthy(result)) {
+        return true;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * remove-if関数の実装
+   * 述語が真を返す要素を除去した新しいリストを返す
+   */
+  private removeIf(predicate: LispValue, sequence: LispValue): LispValue[] {
+    if (!Array.isArray(sequence)) {
+      throw new Error("remove-if requires a sequence");
+    }
+    
+    const results: LispValue[] = [];
+    for (const item of sequence) {
+      const result = this.funcall(predicate, item);
+      if (!this.isTruthy(result)) {
+        results.push(item);
+      }
+    }
+    
+    return results;
+  }
+
+  /**
+   * setf特殊フォームの実装
+   * Common Lispのsetfマクロの基本実装
+   * (setf place value) の形式で様々な場所に値を設定
+   */
+  private evaluateSetf(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length !== 3) {
+      throw new Error("setf requires exactly 2 arguments: place and value");
+    }
+
+    const place = expr[1];
+    const value = this.evaluate(expr[2], env);
+
+    // ハッシュテーブルアクセスの場合: (setf (gethash key hash-table) value)
+    if (Array.isArray(place) && place.length >= 3) {
+      const placeOp = place[0];
+      if (this.isSymbol(placeOp) && placeOp.value === "gethash") {
+        return this.setfGethash(place, value, env);
+      }
+    }
+
+    // 変数の場合: (setf symbol value)
+    if (this.isSymbol(place)) {
+      env.define(place.value, value);
+      return value;
+    }
+
+    throw new Error(`setf: unsupported place type: ${JSON.stringify(place)}`);
+  }
+
+  /**
+   * setf + gethashの組み合わせを処理
+   */
+  private setfGethash(place: LispValue[], value: LispValue, env: Environment): LispValue {
+    const key = this.evaluate(place[1], env);
+    const hashTable = this.evaluate(place[2], env);
+    
+    if (!this.isHashTable(hashTable)) {
+      throw new Error("setf gethash requires a hash table as second argument");
+    }
+
+    const keyStr = this.hashTableKeyToString(key);
+    const map = hashTable.map as Map<string, LispValue>;
+    map.set(keyStr, value);
+    
+    return value;
+  }
+
+  /**
+   * error関数の実装
+   * Common Lispのerror関数 - エラーを明示的に発生させる
+   */
+  private error(...args: LispValue[]): never {
+    const message = this.formatErrorMessage(args);
+    throw new Error(message);
+  }
+
+  /**
+   * エラーメッセージをフォーマット
+   */
+  private formatErrorMessage(args: LispValue[]): string {
+    if (args.length === 0) {
+      return "Error";
+    }
+    
+    const firstArg = args[0];
+    let message: string;
+    
+    // メインメッセージの構築
+    if (typeof firstArg === "string") {
+      message = firstArg;
+    } else if (this.isSymbol(firstArg)) {
+      message = `Error: ${firstArg.value}`;
+    } else {
+      message = `Error: ${JSON.stringify(firstArg)}`;
+    }
+    
+    // 追加引数があれば含める
+    if (args.length > 1) {
+      const additionalArgs = args.slice(1).map(arg => this.valueToString(arg)).join(", ");
+      message += ` (${additionalArgs})`;
+    }
+    
+    return message;
+  }
+
+  /**
+   * LispValueを文字列表現に変換
+   */
+  private valueToString(value: LispValue): string {
+    if (typeof value === "string") return value;
+    if (typeof value === "number") return value.toString();
+    if (this.isSymbol(value)) return value.value;
+    if (this.isKeyword(value)) return `:${value.value}`;
+    return JSON.stringify(value);
   }
 }
