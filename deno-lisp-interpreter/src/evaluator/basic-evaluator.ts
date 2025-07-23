@@ -1,7 +1,10 @@
 // basic-evaluator.ts - 基本評価器実装
 
-import { LispValue, LispSymbol, LispKeyword, LispQuote, LispFunction, LispBuiltin } from "../parser/s-expression-parser.ts";
+import { LispValue, LispSymbol, LispKeyword, LispQuote, LispFunction, LispBuiltin, SExpressionParser } from "../parser/s-expression-parser.ts";
 import { SymbolTable, Symbol } from "../core/symbol-table.ts";
+import { StructSystem } from "../core/struct-system.ts";
+import { FileLoader } from "../core/file-loader.ts";
+import { PackageSystem } from "../core/package-system.ts";
 
 /**
  * 環境（変数と関数のスコープ）
@@ -48,7 +51,9 @@ export class Environment {
  */
 export class BasicEvaluator {
   private globalEnv: Environment;
-  private structSystem: any = null;
+  private structSystem: StructSystem;
+  private fileLoader: FileLoader;
+  private packageSystem: PackageSystem;
   private symbolTable: SymbolTable;
   private gensymCounter: number = 0;
   private symbolCache: Map<string, LispValue> = new Map();
@@ -56,6 +61,9 @@ export class BasicEvaluator {
   constructor() {
     this.globalEnv = new Environment();
     this.symbolTable = new SymbolTable();
+    this.structSystem = new StructSystem();
+    this.packageSystem = new PackageSystem();
+    this.fileLoader = new FileLoader();
     this.initializeBuiltins();
   }
 
@@ -115,6 +123,9 @@ export class BasicEvaluator {
     this.globalEnv.define("symbol-package", { type: "builtin", name: "symbol-package", fn: this.symbolPackage.bind(this) } as LispBuiltin);
     this.globalEnv.define("find-symbol", { type: "builtin", name: "find-symbol", fn: this.findSymbol.bind(this) } as LispBuiltin);
     this.globalEnv.define("gensym", { type: "builtin", name: "gensym", fn: this.gensym.bind(this) } as LispBuiltin);
+    
+    // ファイル操作関数
+    this.globalEnv.define("load", { type: "builtin", name: "load", fn: this.load.bind(this) } as LispBuiltin);
     
     // 論理値
     this.globalEnv.define("t", true);
@@ -199,6 +210,10 @@ export class BasicEvaluator {
             return this.evaluateSetf(expr, env);
           case "defstruct":
             return this.evaluateDefstruct(expr, env);
+          case "defpackage":
+            return this.evaluateDefpackage(expr, env);
+          case "in-package":
+            return this.evaluateInPackage(expr, env);
         }
       }
 
@@ -685,9 +700,6 @@ export class BasicEvaluator {
    * defstruct式の評価
    */
   private evaluateDefstruct(expr: LispValue[], env: Environment): LispValue {
-    if (!this.structSystem) {
-      throw new Error("StructSystem not available");
-    }
 
     if (expr.length < 2) {
       throw new Error("defstruct requires at least a struct name");
@@ -1416,5 +1428,125 @@ export class BasicEvaluator {
     
     this.symbolCache.set(symbolName, lispValue);
     return lispValue;
+  }
+
+  // === File Loading System ===
+  
+  /**
+   * Lispコードの行が評価対象かどうかを判定
+   */
+  private isEvaluatableLine(line: string): boolean {
+    const trimmed = line.trim();
+    return trimmed && 
+           !trimmed.startsWith(';;') && 
+           !trimmed.startsWith(';;;') && 
+           trimmed.startsWith('(');
+  }
+  
+  /**
+   * ファイルコンテンツを評価可能な行に分割
+   */
+  private parseFileContent(content: string): string[] {
+    return content.split('\n').filter(this.isEvaluatableLine.bind(this));
+  }
+  
+  /**
+   * 単一のLisp式を安全に評価
+   */
+  private safeEvaluateLine(line: string, parser: SExpressionParser): LispValue | null {
+    try {
+      const expr = parser.parse(line);
+      return this.evaluate(expr);
+    } catch (parseError) {
+      console.warn(`Parse error in line: ${line.slice(0, 50)}...`);
+      return null;
+    }
+  }
+  
+  /**
+   * load関数の実装
+   * Lispファイルを読み込んで評価する（同期版）
+   */
+  private load(filename: LispValue): LispValue {
+    if (typeof filename !== "string") {
+      throw new Error("load argument must be a string filename");
+    }
+    
+    try {
+      const content = Deno.readTextFileSync(filename);
+      const parser = new SExpressionParser();
+      const evaluableLines = this.parseFileContent(content);
+      
+      let successCount = 0;
+      for (const line of evaluableLines) {
+        const result = this.safeEvaluateLine(line, parser);
+        if (result !== null) {
+          successCount++;
+        }
+      }
+      
+      console.log(`Loaded ${successCount}/${evaluableLines.length} expressions from ${filename}`);
+      return true;
+    } catch (error) {
+      console.warn(`Warning: Could not load file ${filename}: ${error}`);
+      return false;
+    }
+  }
+
+  // === Package System ===
+  
+  /**
+   * パッケージ名を正規化（キーワードまたはシンボルから文字列を抽出）
+   */
+  private normalizePackageName(nameExpr: LispValue): string {
+    if (this.isKeyword(nameExpr)) {
+      return nameExpr.value;
+    } else if (this.isSymbol(nameExpr)) {
+      return nameExpr.value;
+    } else {
+      throw new Error("Package name must be a keyword or symbol");
+    }
+  }
+  
+  /**
+   * パッケージ関連の共通戻り値作成
+   */
+  private createPackageResult(packageName: string): LispSymbol {
+    return {
+      type: "symbol",
+      value: packageName
+    } as LispSymbol;
+  }
+  
+  /**
+   * defpackage式の評価
+   */
+  private evaluateDefpackage(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length < 2) {
+      throw new Error("defpackage requires at least a package name");
+    }
+    
+    const packageName = this.normalizePackageName(expr[1]);
+    
+    // パッケージを作成（簡略化実装）
+    this.packageSystem.definePackage(packageName, ["common-lisp"], this.symbolTable);
+    
+    return this.createPackageResult(packageName);
+  }
+  
+  /**
+   * in-package式の評価
+   */
+  private evaluateInPackage(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length !== 2) {
+      throw new Error("in-package requires exactly one package name");
+    }
+    
+    const packageName = this.normalizePackageName(expr[1]);
+    
+    // パッケージを切り替える
+    this.packageSystem.setCurrentPackage(packageName);
+    
+    return this.createPackageResult(packageName);
   }
 }
