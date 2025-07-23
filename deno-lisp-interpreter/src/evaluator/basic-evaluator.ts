@@ -127,6 +127,9 @@ export class BasicEvaluator {
     // ファイル操作関数
     this.globalEnv.define("load", { type: "builtin", name: "load", fn: this.load.bind(this) } as LispBuiltin);
     
+    // リスト生成関数
+    this.globalEnv.define("make-list", { type: "builtin", name: "make-list", fn: this.makeList.bind(this) } as LispBuiltin);
+    
     // 論理値
     this.globalEnv.define("t", true);
     this.globalEnv.define("nil", null);
@@ -1443,10 +1446,25 @@ export class BasicEvaluator {
    */
   private isEvaluatableLine(line: string): boolean {
     const trimmed = line.trim();
-    return trimmed && 
-           !trimmed.startsWith(';;') && 
-           !trimmed.startsWith(';;;') && 
-           trimmed.startsWith('(');
+    return Boolean(
+      trimmed && 
+      !this.isCommentLine(trimmed) && 
+      this.isLispExpression(trimmed)
+    );
+  }
+
+  /**
+   * コメント行かどうかを判定
+   */
+  private isCommentLine(line: string): boolean {
+    return line.startsWith(';;') || line.startsWith(';;;');
+  }
+
+  /**
+   * Lisp式の開始かどうかを判定
+   */
+  private isLispExpression(line: string): boolean {
+    return line.startsWith('(');
   }
   
   /**
@@ -1578,82 +1596,9 @@ export class BasicEvaluator {
     } as LispSymbol;
   }
   
-  /**
-   * defvar式の評価
-   * グローバル変数定義
-   */
-  private evaluateDefvar(expr: LispValue[], env: Environment): LispValue {
-    if (expr.length < 2) {
-      throw new Error("defvar requires at least a variable name");
-    }
-    
-    const varName = this.validateSymbolArgument(expr[1], "defvar", "variable name");
-    const initialValue = expr.length > 2 ? this.evaluate(expr[2], env) : null;
-    
-    // グローバル環境に定義
-    this.globalEnv.define(varName, initialValue);
-    
-    return this.createSymbolResult(varName);
-  }
   
   /**
-   * パラメータリストを解析してパラメータ名を抽出
-   */
-  private extractParameterNames(parameters: LispValue): string[] {
-    const paramNames: string[] = [];
-    if (Array.isArray(parameters)) {
-      for (const param of parameters) {
-        if (this.isSymbol(param)) {
-          paramNames.push(param.value);
-        }
-      }
-    }
-    return paramNames;
-  }
-  
-  /**
-   * 関数本体を正規化（単一式はそのまま、複数式はprognでラップ）
-   */
-  private normalizeFunctionBody(body: LispValue[]): LispValue {
-    if (body.length === 0) {
-      return null;
-    } else if (body.length === 1) {
-      return body[0];
-    } else {
-      return [{ type: "symbol", value: "progn" }, ...body];
-    }
-  }
-  
-  /**
-   * defun式の評価
-   * 関数定義
-   */
-  private evaluateDefun(expr: LispValue[], env: Environment): LispValue {
-    if (expr.length < 3) {
-      throw new Error("defun requires function name, parameters, and body");
-    }
-    
-    const functionName = this.validateSymbolArgument(expr[1], "defun", "function name");
-    const parameters = expr[2];
-    const body = expr.slice(3);
-    
-    // 関数オブジェクトを作成
-    const fn: LispFunction = {
-      type: "function",
-      params: this.extractParameterNames(parameters),
-      body: this.normalizeFunctionBody(body),
-      closure: env
-    };
-    
-    // グローバル環境に登録
-    this.globalEnv.define(functionName, fn);
-    
-    return this.createSymbolResult(functionName);
-  }
-  
-  /**
-   * case式の評価
-   * 条件分岐
+   * case式の評価 - 条件分岐
    */
   private evaluateCase(expr: LispValue[], env: Environment): LispValue {
     if (expr.length < 2) {
@@ -1664,32 +1609,43 @@ export class BasicEvaluator {
     const clauses = expr.slice(2);
     
     for (const clause of clauses) {
-      if (!Array.isArray(clause) || clause.length < 2) {
+      if (!this.isValidCaseClause(clause)) {
         continue;
       }
       
-      const keys = clause[0];
-      const forms = clause.slice(1);
+      const [keys, ...forms] = clause as LispValue[];
       
-      // t または otherwise は常にマッチ
-      if (this.isSymbol(keys) && (keys.value === "t" || keys.value === "otherwise")) {
-        return this.evaluateProgn([{ type: "symbol", value: "progn" }, ...forms], env);
-      }
-      
-      // キーリストとマッチするかチェック
-      let matches = false;
-      if (Array.isArray(keys)) {
-        matches = keys.some(key => this.lispEqual(keyValue, key));
-      } else {
-        matches = this.lispEqual(keyValue, keys);
-      }
-      
-      if (matches) {
+      if (this.isDefaultClause(keys) || this.matchesKey(keyValue, keys)) {
         return this.evaluateProgn([{ type: "symbol", value: "progn" }, ...forms], env);
       }
     }
     
     return null; // マッチしない場合はnil
+  }
+
+  /**
+   * case句の妥当性をチェック
+   */
+  private isValidCaseClause(clause: LispValue): boolean {
+    return Array.isArray(clause) && clause.length >= 2;
+  }
+
+  /**
+   * デフォルト句（t または otherwise）かチェック
+   */
+  private isDefaultClause(keys: LispValue): boolean {
+    return this.isSymbol(keys) && (keys.value === "t" || keys.value === "otherwise");
+  }
+
+  /**
+   * キーがマッチするかチェック
+   */
+  private matchesKey(keyValue: LispValue, keys: LispValue): boolean {
+    if (Array.isArray(keys)) {
+      return keys.some(key => this.lispEqual(keyValue, key));
+    } else {
+      return this.lispEqual(keyValue, keys);
+    }
   }
   
   /**
@@ -1713,5 +1669,26 @@ export class BasicEvaluator {
     }
     
     return false;
+  }
+
+  // === Additional Built-in Functions ===
+  
+  /**
+   * make-list関数の実装
+   * 指定された長さのリストを作成
+   */
+  private makeList(size: LispValue, initialElement?: LispValue): LispValue {
+    if (typeof size !== "number" || size < 0) {
+      throw new Error("make-list size must be a non-negative integer");
+    }
+    
+    const element = initialElement !== undefined ? initialElement : null;
+    const result: LispValue[] = [];
+    
+    for (let i = 0; i < size; i++) {
+      result.push(element);
+    }
+    
+    return result;
   }
 }
