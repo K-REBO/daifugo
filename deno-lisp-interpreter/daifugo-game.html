@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 大富豪 - Lisp Interpreter Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 50%, #9b59b6 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.8);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .game-title {
+            font-size: 3em;
+            color: #f39c12;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            color: #bdc3c7;
+            margin-bottom: 20px;
+        }
+        
+        .status-panel {
+            background: rgba(52, 73, 94, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #34495e;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn.success {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            min-height: 400px;
+        }
+        
+        .player-area {
+            background: rgba(44, 62, 80, 0.6);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #2c3e50;
+        }
+        
+        .field-area {
+            background: rgba(39, 174, 96, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            border: 3px solid #27ae60;
+            text-align: center;
+            position: relative;
+        }
+        
+        .hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .card {
+            width: 60px;
+            height: 90px;
+            background: white;
+            color: black;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 2px solid #ddd;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        
+        .card.selected {
+            transform: translateY(-10px);
+            border-color: #f39c12;
+            box-shadow: 0 6px 16px rgba(243, 156, 18, 0.5);
+        }
+        
+        .card.spades, .card.clubs { color: black; }
+        .card.hearts, .card.diamonds { color: red; }
+        
+        .card-rank {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .card-suit {
+            font-size: 18px;
+        }
+        
+        .log-area {
+            background: rgba(0,0,0,0.6);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #34495e;
+        }
+        
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: rgba(52, 73, 94, 0.5);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .lisp-console {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 2px solid #34495e;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .player-name {
+            font-weight: bold;
+            color: #f39c12;
+        }
+        
+        .card-count {
+            background: #e74c3c;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .current-player {
+            border: 3px solid #f39c12;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+        }
+        
+        .field-cards {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .field-card {
+            width: 50px;
+            height: 75px;
+            font-size: 12px;
+        }
+        
+        @media (max-width: 768px) {
+            .game-board {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+            
+            .card {
+                width: 50px;
+                height: 75px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1 class="game-title">🎮 大富豪</h1>
+            <p class="subtitle">Lisp Interpreter で動作する本格的なカードゲーム</p>
+        </div>
+
+        <div class="status-panel">
+            <div id="engine-status">🔴 Lispエンジン: 未初期化</div>
+            <div id="game-status">⏸️ ゲーム: 未開始</div>
+            <div id="current-turn">👤 現在のターン: -</div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="initializeLispEngine()">Lispエンジン初期化</button>
+            <button class="btn secondary" onclick="startNewGame()">新しいゲーム開始</button>
+            <button class="btn success" onclick="playSelectedCards()">選択したカードを出す</button>
+            <button class="btn" onclick="passTurn()">パス</button>
+            <button class="btn secondary" onclick="showGameState()">ゲーム状態表示</button>
+        </div>
+
+        <div class="game-board">
+            <div class="player-area" id="player-0">
+                <div class="player-info">
+                    <span class="player-name">プレイヤー1 (あなた)</span>
+                    <span class="card-count" id="count-0">0枚</span>
+                </div>
+                <div class="hand" id="hand-0"></div>
+            </div>
+
+            <div class="field-area">
+                <h3>場に出されたカード</h3>
+                <div id="field-info">まだカードは出されていません</div>
+                <div class="field-cards" id="field-cards"></div>
+            </div>
+
+            <div class="player-area" id="player-1">
+                <div class="player-info">
+                    <span class="player-name">プレイヤー2 (CPU)</span>
+                    <span class="card-count" id="count-1">0枚</span>
+                </div>
+                <div class="hand" id="hand-1"></div>
+            </div>
+        </div>
+
+        <div class="log-area">
+            <h4>ゲームログ</h4>
+            <div id="game-log"></div>
+        </div>
+
+        <div class="lisp-console" id="lisp-console">
+Lispコンソール出力がここに表示されます...
+        </div>
+    </div>
+
+    <!-- Lispインタープリターをロード -->
+    <script src="./src/browser-bundle.js"></script>
+    
+    <script>
+        // ゲーム状態
+        let lispEvaluator = null;
+        let gameState = {
+            initialized: false,
+            players: [],
+            currentPlayer: 0,
+            field: [],
+            deck: [],
+            gamePhase: 'waiting'
+        };
+        
+        let selectedCards = [];
+
+        // Lispエンジン初期化
+        window.initializeLispEngine = async function() {
+            try {
+                updateStatus('engine-status', '🟡 Lispエンジン: 初期化中...');
+                logToConsole('Lispエンジンを初期化中...');
+                
+                // BasicEvaluatorを初期化
+                lispEvaluator = new window.BasicEvaluator();
+                
+                // 大富豪用のLisp関数を定義
+                await initializeDaifugoFunctions();
+                
+                updateStatus('engine-status', '🟢 Lispエンジン: 初期化完了');
+                logToConsole('✅ Lispエンジン初期化完了');
+                logToGame('Lispエンジンが正常に初期化されました');
+                
+                gameState.initialized = true;
+                
+            } catch (error) {
+                updateStatus('engine-status', '🔴 Lispエンジン: 初期化失敗');
+                logToConsole('❌ エラー: ' + error.message);
+                logToGame('エンジン初期化に失敗しました: ' + error.message);
+            }
+        };
+
+        // 大富豪用のLisp関数を定義
+        async function initializeDaifugoFunctions() {
+            const functions = [
+                // カード構造体定義
+                `(defstruct card rank suit strength)`,
+                
+                // ゲーム状態構造体定義
+                `(defstruct game-state players current-player field deck)`,
+                
+                // カード作成関数
+                `(defun create-card (rank suit)
+                   (make-card :rank rank :suit suit :strength (calculate-strength rank)))`,
+                
+                // カード強度計算
+                `(defun calculate-strength (rank)
+                   (case rank
+                     (3 1) (4 2) (5 3) (6 4) (7 5) (8 6) (9 7) (10 8)
+                     (J 9) (Q 10) (K 11) (A 12) (2 13) (JOKER 14)
+                     (otherwise 0)))`,
+                
+                // デッキ作成（簡易版）
+                `(defun create-deck ()
+                   (list
+                     (create-card 3 'spades)
+                     (create-card 4 'hearts)
+                     (create-card 5 'diamonds)
+                     (create-card 6 'clubs)
+                     (create-card 7 'spades)
+                     (create-card 8 'hearts)
+                     (create-card 9 'diamonds)
+                     (create-card 10 'clubs)
+                     (create-card 'J 'spades)
+                     (create-card 'Q 'hearts)
+                     (create-card 'K 'diamonds)
+                     (create-card 'A 'clubs)
+                     (create-card 2 'spades)))`,
+                
+                // カード比較
+                `(defun compare-cards (card1 card2)
+                   (- (card-strength card1) (card-strength card2)))`,
+                
+                // プレイヤー作成
+                `(defun create-player (id name hand)
+                   (list :id id :name name :hand hand))`,
+                
+                // ゲーム初期化
+                `(defun initialize-game (player-count)
+                   (make-game-state 
+                     :players (list (create-player 0 "Player1" nil) (create-player 1 "Player2" nil))
+                     :current-player 0 
+                     :field nil 
+                     :deck (create-deck)))`
+            ];
+
+            const parser = new window.SExpressionParser();
+            
+            for (const func of functions) {
+                try {
+                    const parsed = parser.parse(func);
+                    const result = lispEvaluator.evaluate(parsed);
+                    logToConsole('定義: ' + func.split(' ')[1] + ' -> ' + JSON.stringify(result));
+                } catch (error) {
+                    logToConsole('定義エラー: ' + func.split(' ')[1] + ' -> ' + error.message);
+                }
+            }
+        }
+
+        // 新しいゲーム開始
+        window.startNewGame = function() {
+            if (!gameState.initialized) {
+                alert('まずLispエンジンを初期化してください');
+                return;
+            }
+
+            try {
+                logToGame('新しいゲームを開始します...');
+                
+                // Lispでゲーム初期化
+                const parser = new window.SExpressionParser();
+                const parsed = parser.parse('(initialize-game 2)');
+                const initResult = lispEvaluator.evaluate(parsed);
+                logToConsole('ゲーム初期化結果: ' + JSON.stringify(initResult));
+                
+                // ゲーム状態を更新
+                gameState.gamePhase = 'playing';
+                gameState.currentPlayer = 0;
+                
+                updateStatus('game-status', '▶️ ゲーム: プレイ中');
+                updateStatus('current-turn', '👤 現在のターン: プレイヤー1');
+                
+                // UIを更新
+                initializeGameUI();
+                
+                logToGame('ゲームが開始されました！');
+                
+            } catch (error) {
+                logToConsole('ゲーム開始エラー: ' + error.message);
+                logToGame('ゲーム開始に失敗しました: ' + error.message);
+            }
+        };
+
+        // ゲームUI初期化
+        function initializeGameUI() {
+            // プレイヤー1の手札を作成（デモ用）
+            const player1Hand = [
+                { rank: '3', suit: 'spades', strength: 1 },
+                { rank: '5', suit: 'hearts', strength: 3 },
+                { rank: '7', suit: 'diamonds', strength: 5 },
+                { rank: 'Q', suit: 'clubs', strength: 10 },
+                { rank: 'A', suit: 'spades', strength: 12 }
+            ];
+            
+            displayPlayerHand(0, player1Hand);
+            updateCardCount(0, player1Hand.length);
+            updateCardCount(1, 13); // CPU手札数（仮）
+            
+            // 現在のプレイヤーを強調表示
+            highlightCurrentPlayer(0);
+        }
+
+        // プレイヤーの手札を表示
+        function displayPlayerHand(playerId, hand) {
+            const handElement = document.getElementById(`hand-${playerId}`);
+            handElement.innerHTML = '';
+            
+            hand.forEach((card, index) => {
+                const cardElement = createCardElement(card, index);
+                if (playerId === 0) { // プレイヤー1のカードのみクリック可能
+                    cardElement.addEventListener('click', () => toggleCardSelection(cardElement, index));
+                }
+                handElement.appendChild(cardElement);
+            });
+        }
+
+        // カード要素を作成
+        function createCardElement(card, index) {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = `card ${card.suit}`;
+            cardDiv.dataset.index = index;
+            
+            cardDiv.innerHTML = `
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit">${getSuitSymbol(card.suit)}</div>
+            `;
+            
+            return cardDiv;
+        }
+
+        // スートシンボルを取得
+        function getSuitSymbol(suit) {
+            const symbols = {
+                'spades': '♠',
+                'hearts': '♥',
+                'diamonds': '♦',
+                'clubs': '♣',
+                'joker': '🃏'
+            };
+            return symbols[suit] || suit;
+        }
+
+        // カード選択/選択解除
+        function toggleCardSelection(cardElement, index) {
+            const isSelected = cardElement.classList.contains('selected');
+            
+            if (isSelected) {
+                cardElement.classList.remove('selected');
+                selectedCards = selectedCards.filter(i => i !== index);
+            } else {
+                cardElement.classList.add('selected');
+                selectedCards.push(index);
+            }
+            
+            logToConsole(`カード選択: インデックス${index}, 選択済み: [${selectedCards.join(', ')}]`);
+        }
+
+        // 選択したカードを出す
+        window.playSelectedCards = function() {
+            if (selectedCards.length === 0) {
+                alert('カードを選択してください');
+                return;
+            }
+
+            try {
+                logToGame(`プレイヤー1が${selectedCards.length}枚のカードを出しました`);
+                
+                // 場にカードを追加
+                addCardsToField(selectedCards);
+                
+                // 選択をクリア
+                clearSelection();
+                
+                // 次のプレイヤーに交代
+                nextTurn();
+                
+            } catch (error) {
+                logToConsole('カードプレイエラー: ' + error.message);
+                logToGame('カードを出すのに失敗しました');
+            }
+        };
+
+        // 場にカードを追加
+        function addCardsToField(cardIndices) {
+            const fieldCards = document.getElementById('field-cards');
+            const fieldInfo = document.getElementById('field-info');
+            
+            fieldInfo.textContent = `${cardIndices.length}枚のカードが出されました`;
+            
+            // 場のカードを表示（簡略化）
+            cardIndices.forEach(index => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card field-card';
+                cardDiv.innerHTML = `<div class="card-rank">${index + 3}</div>`;
+                fieldCards.appendChild(cardDiv);
+            });
+        }
+
+        // パス
+        window.passTurn = function() {
+            logToGame('プレイヤー1がパスしました');
+            nextTurn();
+        };
+
+        // 次のターン
+        function nextTurn() {
+            gameState.currentPlayer = (gameState.currentPlayer + 1) % 2;
+            
+            if (gameState.currentPlayer === 0) {
+                updateStatus('current-turn', '👤 現在のターン: プレイヤー1');
+                highlightCurrentPlayer(0);
+            } else {
+                updateStatus('current-turn', '🤖 現在のターン: プレイヤー2 (CPU)');
+                highlightCurrentPlayer(1);
+                
+                // CPUの行動をシミュレート
+                setTimeout(simulateCPUTurn, 1500);
+            }
+        }
+
+        // CPUターンをシミュレート
+        function simulateCPUTurn() {
+            const actions = ['カードを出す', 'パス'];
+            const action = actions[Math.floor(Math.random() * actions.length)];
+            
+            logToGame(`プレイヤー2 (CPU)が${action}をしました`);
+            
+            if (action === 'カードを出す') {
+                // CPU用の場のカード追加
+                const fieldCards = document.getElementById('field-cards');
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card field-card';
+                cardDiv.innerHTML = `<div class="card-rank">CPU</div>`;
+                fieldCards.appendChild(cardDiv);
+            }
+            
+            nextTurn();
+        }
+
+        // 現在のプレイヤーを強調表示
+        function highlightCurrentPlayer(playerId) {
+            document.querySelectorAll('.player-area').forEach(area => {
+                area.classList.remove('current-player');
+            });
+            document.getElementById(`player-${playerId}`).classList.add('current-player');
+        }
+
+        // 選択をクリア
+        function clearSelection() {
+            document.querySelectorAll('.card.selected').forEach(card => {
+                card.classList.remove('selected');
+            });
+            selectedCards = [];
+        }
+
+        // ゲーム状態表示
+        window.showGameState = function() {
+            if (!lispEvaluator) {
+                alert('Lispエンジンが初期化されていません');
+                return;
+            }
+
+            try {
+                // Lispでゲーム状態を取得
+                logToConsole('現在のゲーム状態:');
+                logToConsole('- ゲームフェーズ: ' + gameState.gamePhase);
+                logToConsole('- 現在のプレイヤー: ' + gameState.currentPlayer);
+                logToConsole('- 選択されたカード: [' + selectedCards.join(', ') + ']');
+                
+                logToGame('ゲーム状態をコンソールに出力しました');
+                
+            } catch (error) {
+                logToConsole('状態取得エラー: ' + error.message);
+            }
+        };
+
+        // ユーティリティ関数
+        function updateStatus(elementId, text) {
+            document.getElementById(elementId).textContent = text;
+        }
+
+        function updateCardCount(playerId, count) {
+            document.getElementById(`count-${playerId}`).textContent = `${count}枚`;
+        }
+
+        function logToGame(message) {
+            const logDiv = document.getElementById('game-log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function logToConsole(message) {
+            const console = document.getElementById('lisp-console');
+            console.textContent += `\\n[${new Date().toLocaleTimeString()}] ${message}`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // 初期化
+        window.addEventListener('load', function() {
+            logToConsole('🎮 大富豪ゲーム読み込み完了');
+            logToGame('ゲームページが読み込まれました。Lispエンジンを初期化してください。');
+        });
+    </script>
+</body>
+</html>

@@ -1,14 +1,13 @@
 // Browser test using Deno Playwright
-import { chromium } from "npm:playwright";
+import { firefox } from "npm:playwright"; // ここをchromiumからfirefoxに変更しますにゃん
 
 async function testBrowserVersion() {
     console.log("🚀 Starting browser test...");
     
     try {
         // Launch browser
-        const browser = await chromium.launch({ 
-            headless: false,
-            executablePath: "/tmp/ms-playwright/chromium-1181/chrome-linux/chrome"
+        const browser = await firefox.launch({ // ここをchromium.launchからfirefox.launchに変更しますにゃん
+            headless: false
         });
         
         const context = await browser.newContext();

@@ -75,6 +75,27 @@ export class BasicEvaluator {
   }
 
   /**
+   * StructSystemを取得
+   */
+  getStructSystem(): StructSystem {
+    return this.structSystem;
+  }
+
+  /**
+   * PackageSystemを取得
+   */
+  getPackageSystem(): PackageSystem {
+    return this.packageSystem;
+  }
+
+  /**
+   * SymbolTableを取得
+   */
+  getSymbolTable(): SymbolTable {
+    return this.symbolTable;
+  }
+
+  /**
    * 組み込み関数の初期化
    */
   private initializeBuiltins(): void {
@@ -163,7 +184,12 @@ export class BasicEvaluator {
 
     // クォート
     if (this.isQuote(expr)) {
-      return expr.value;
+      const quotedValue = expr.value;
+      // クォートされたシンボルは文字列値として返す
+      if (this.isSymbol(quotedValue)) {
+        return quotedValue.value;
+      }
+      return quotedValue;
     }
 
     // リスト（関数呼び出し）
@@ -271,6 +297,12 @@ export class BasicEvaluator {
     if (this.isFunction(func)) {
       const evaluatedArgs = args.map(arg => this.evaluate(arg, env));
       return this.callUserFunction(func, evaluatedArgs);
+    }
+
+    // JavaScript関数（構造体コンストラクタ等）への対応
+    if (typeof func === "function") {
+      const evaluatedArgs = args.map(arg => this.evaluate(arg, env));
+      return func(...evaluatedArgs);
     }
 
     throw new Error(`Not a function: ${JSON.stringify(func)}`);

@@ -165,10 +165,56 @@ export class StructSystem {
    */
   private generateConstructor(structDef: StructDefinition): void {
     const constructor = (...args: LispValue[]) => {
+      // キーワード引数の処理
+      if (args.length > 0 && this.isKeyword(args[0])) {
+        return this.createInstanceWithKeywords(structDef.name, args);
+      }
+      // 位置引数の処理
       return this.createInstance(structDef.name, args);
     };
     
     this.constructors.set(structDef.name, constructor);
+  }
+
+  /**
+   * キーワード引数でインスタンスを作成
+   */
+  private createInstanceWithKeywords(structName: string, args: LispValue[]): StructInstance {
+    const structDef = this.getStructDefinition(structName);
+    const instance = new StructInstance(structName);
+    const allFields = structDef.getAllFields(this);
+    
+    // 全フィールドをnullで初期化
+    for (const fieldName of allFields) {
+      instance.setValue(fieldName, null);
+    }
+    
+    // キーワード引数を処理
+    for (let i = 0; i < args.length; i += 2) {
+      const keyword = args[i];
+      const value = args[i + 1];
+      
+      if (!this.isKeyword(keyword)) {
+        throw new Error(`Expected keyword, got ${JSON.stringify(keyword)}`);
+      }
+      
+      const fieldName = keyword.value; // パーサーですでに:が除去されている
+      if (allFields.includes(fieldName)) {
+        instance.setValue(fieldName, value);
+      } else {
+        throw new Error(`Unknown field: ${fieldName} for struct ${structName}`);
+      }
+    }
+    
+    return instance;
+  }
+
+  /**
+   * キーワードかどうかをチェック
+   */
+  private isKeyword(value: LispValue): boolean {
+    return typeof value === "object" && value !== null && 
+           "type" in value && value.type === "keyword";
   }
 
   /**

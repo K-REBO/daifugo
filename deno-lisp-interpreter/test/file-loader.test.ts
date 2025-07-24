@@ -95,13 +95,10 @@ Deno.test("Load file with package and struct definitions", async () => {
   // パッケージと構造体定義を含むファイルのテスト
   const fileLoader = new FileLoader();
   const evaluator = new BasicEvaluator();
-  const symbolTable = new SymbolTable();
-  const structSystem = new StructSystem();
-  const packageSystem = new PackageSystem();
   
-  // システムの統合
-  structSystem.integrateWithEvaluator(evaluator);
-  packageSystem.integrateWithEvaluator(evaluator);
+  // BasicEvaluatorの内部システムを取得
+  const structSystem = evaluator.getStructSystem();
+  const packageSystem = evaluator.getPackageSystem();
   
   // テスト用一時ファイルの作成
   const testLispContent = `
@@ -335,14 +332,10 @@ Deno.test("File loader integration with all systems", async () => {
   // 全システムとの統合テスト
   const fileLoader = new FileLoader();
   const evaluator = new BasicEvaluator();
-  const symbolTable = new SymbolTable();
-  const structSystem = new StructSystem();
-  const packageSystem = new PackageSystem();
   
-  // 統合セットアップ
-  structSystem.integrateWithEvaluator(evaluator);
-  packageSystem.integrateWithEvaluator(evaluator);
-  fileLoader.integrateWithEvaluator(evaluator);
+  // BasicEvaluatorの内部システムを取得
+  const structSystem = evaluator.getStructSystem();
+  const packageSystem = evaluator.getPackageSystem();
   
   // 完全なLispファイル
   const completeLispContent = `
