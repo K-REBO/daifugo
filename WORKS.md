@@ -194,12 +194,13 @@
 - **クォートされたシンボルの文字列変換**
 
 ### 🚀 最終状態
-- **テスト**: 20/20 + 統合テスト すべて合格
+- **テスト**: 8/8コアテスト + 1統合テスト すべて合格
 - **実装進捗**: 100% (20/20 sections completed)
 - **構造体システム**: 完全動作（位置引数・キーワード引数両対応）
 - **ブラウザ対応**: 完了（daifugo-game.html動作確認済み）
 - **LispDaifugoEngine統合**: 完了（パッケージ・構造体・関数すべて統合）
-- **統合テスト**: 完了（comprehensive-game-test.ts等成功）
+- **統合テスト**: 完了（integration-test.ts成功）
+- **テスト統合・整理**: 完了（18ファイル→9ファイル、50%削減）
 - **リファクタリング**: 完了
 
 ### 🎮 実現した機能
@@ -209,3 +210,27 @@
 ✅ **自動テスタ・ロガーシステムとの統合準備完了**
 
 **🏆 目標達成: Deno/TypeScript環境で動作する完全なCommon Lispインタープリター + 大富豪ゲームエンジン統合完成！**
+
+---
+
+## ✅ テスト整理実施
+
+### テストファイル整理結果 (2025-07-24)
+- **Before**: 18個のテストファイル
+- **After**: 9個のテストファイル（50%削減達成）
+- **削除**: デバッグ用ファイル6個 + 重複統合テスト3個
+- **統合**: 4個の統合テストを1個のintegration-test.tsに統合
+
+### 整理されたテスト構造
+1. **8個のコアテスト** (基本機能別)
+   - basic-evaluator.test.ts
+   - deno-environment.test.ts 
+   - file-loader.test.ts
+   - package-system.test.ts
+   - s-expression-parser.test.ts
+   - struct-system.test.ts
+   - symbol-table.test.ts
+   - game-integration.test.ts
+
+2. **1個の包括的統合テスト**
+   - integration-test.ts (パッケージ・構造体・カード・プレイヤー・ゲームロジック統合)
