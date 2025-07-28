@@ -11,7 +11,6 @@
            #:player-hand
            #:player-rank
            #:player-type
-           #:player-ai-type
            #:create-players
            #:add-card-to-hand
            #:add-cards-to-hand
@@ -30,8 +29,16 @@
   name     ; プレイヤー名
   hand     ; 手札
   rank     ; 階級 (:daifugo :fugo :heimin :hinmin :daihinmin)
-  type     ; プレイヤータイプ (:human :ai)
-  ai-type) ; AIタイプ (:random :greedy :conservative :aggressive :adaptive)
+  type)    ; プレイヤータイプ (:human :computer)
+
+;;; プレイヤーのデフォルト値設定
+(defun create-player (&key id name (hand nil) (rank :heimin) (type :human))
+  "プレイヤーを作成する（デフォルト値付き）"
+  (make-player :id id
+               :name name
+               :hand hand
+               :rank rank
+               :type type))
 
 ;;; プレイヤー作成
 (defun create-players (player-count)
@@ -41,18 +48,7 @@
                                :name (format nil "Player~A" i)
                                :hand nil
                                :rank :heimin
-                               :type :human
-                               :ai-type nil)))
-
-;;; プレイヤーのデフォルト値設定
-(defun create-player (&key id name (hand nil) (rank :heimin) (type :human) (ai-type nil))
-  "プレイヤーを作成する（デフォルト値付き）"
-  (make-player :id id
-               :name name
-               :hand hand
-               :rank rank
-               :type type
-               :ai-type ai-type))
+                               :type :human)))
 
 ;;; 手札にカード追加
 (defun add-card-to-hand (player card)

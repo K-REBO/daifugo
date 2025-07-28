@@ -98,7 +98,7 @@
   "フィールドをクリア（8切りなどで使用）
    引数: game-state - ゲーム状態オブジェクト
    戻り値: なし（副作用としてフィールドをクリア）"
-  (setf (daifugo-game-engine:game-state-field game-state) nil))
+  (setf (daifugo-game-state:game-state-field game-state) nil))
 
 ;;; ============================================================================
 ;;; カード出し妥当性チェック関数群

@@ -14,9 +14,10 @@
   (load "src/core/card-system.lisp")
   (load "src/core/player-system.lisp")
   (load "src/utils/player-utils.lisp")
+  (load "src/core/game-state.lisp")
   (load "src/core/game-logic.lisp")
-  (load "src/core/rule-engine.lisp")
   (load "src/core/game-engine.lisp")
+  (load "src/core/rule-engine.lisp")
   
   ;; ルールシステム
   (load "src/rules/basic-rules.lisp")
@@ -24,8 +25,6 @@
   
   ;; テストシステム
   (load "src/testing/game-logger.lisp")
-  (load "src/testing/auto-tester.lisp")
-  (load "src/testing/ai-players.lisp")
   
   ;; ユーティリティ
   (load "src/utils/card-utils.lisp")

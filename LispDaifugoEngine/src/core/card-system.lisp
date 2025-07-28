@@ -97,8 +97,18 @@
         (rotatef (nth i shuffled) (nth j shuffled))))
     shuffled))
 
-;;; カード配布（削除予定 - game-engineに移動）
-;; この関数は game-engine.lisp に移動されました
+;;; カード配布
+(defun deal-cards (deck player-count)
+  "デッキを指定された人数のプレイヤーに配布する"
+  (let ((hands (make-list player-count :initial-element nil))
+        (cards-per-player (floor (length deck) player-count)))
+    ;; 各プレイヤーに順番にカードを配布
+    (loop for i from 0 below (length deck) do
+      (let ((player-index (mod i player-count))
+            (card (nth i deck)))
+        (push card (nth player-index hands))))
+    ;; 手札を逆順にして正しい順序にする
+    (mapcar #'reverse hands)))
 
 ;;; カード比較
 (defun compare-cards (card1 card2)

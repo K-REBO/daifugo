@@ -41,12 +41,8 @@
 
 (defun test-player-type-system ()
   "プレイヤータイプシステムのテスト"
-  (let ((human-player (daifugo-player-system:create-player :id 0 :name "Human" :type :human))
-        (ai-player (daifugo-player-system:create-player :id 1 :name "AI" :type :ai :ai-type :random)))
-    (and (eql (daifugo-player-system:player-type human-player) :human)
-         (eql (daifugo-player-system:player-type ai-player) :ai)
-         (eql (daifugo-player-system:player-ai-type ai-player) :random)
-         (null (daifugo-player-system:player-ai-type human-player)))))
+  (let ((human-player (daifugo-player-system:create-player :id 0 :name "Human" :type :human)))
+    (eql (daifugo-player-system:player-type human-player) :human)))
 
 (defun test-get-player-by-id ()
   "プレイヤーID検索のテスト"
