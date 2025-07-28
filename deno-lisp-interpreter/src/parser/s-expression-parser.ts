@@ -65,24 +65,33 @@ export class SExpressionParser {
   /**
    * S式文字列を解析してLispValueに変換
    */
-  parse(input: string): LispValue {
+  parse(input: string): LispValue[] {
     this.input = input.trim();
     this.position = 0;
     this.current = 0;
 
     if (this.input.length === 0) {
-      throw new Error("Empty input");
+      return [];
     }
 
-    const result = this.parseExpression();
+    const results: LispValue[] = [];
     
-    // 入力が完全に消費されているかチェック
-    this.skipWhitespace();
-    if (this.current < this.input.length) {
-      throw new Error(`Unexpected characters at position ${this.current}: '${this.input.slice(this.current)}'`);
+    while (this.current < this.input.length) {
+      this.skipWhitespace();
+      this.skipComments();
+      
+      if (this.current >= this.input.length) {
+        break;
+      }
+      
+      const expr = this.parseExpression();
+      results.push(expr);
+      
+      this.skipWhitespace();
+      this.skipComments();
     }
 
-    return result;
+    return results;
   }
 
   /**
@@ -135,6 +144,7 @@ export class SExpressionParser {
     // 要素を解析
     while (this.current < this.input.length) {
       this.skipWhitespace();
+      this.skipComments();
 
       if (this.current >= this.input.length) {
         throw new Error("Unclosed list: missing ')'");
@@ -307,6 +317,23 @@ export class SExpressionParser {
       } else {
         break;
       }
+    }
+  }
+
+  /**
+   * コメントをスキップ
+   */
+  private skipComments(): void {
+    while (this.current < this.input.length && this.input[this.current] === ';') {
+      // 行末まで読み飛ばす
+      while (this.current < this.input.length && this.input[this.current] !== '\n') {
+        this.current++;
+      }
+      // 改行文字も読み飛ばす
+      if (this.current < this.input.length && this.input[this.current] === '\n') {
+        this.current++;
+      }
+      this.skipWhitespace();
     }
   }
 

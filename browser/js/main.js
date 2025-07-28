@@ -7,9 +7,35 @@ class LispDaifugoEngine {
         this.replHistoryIndex = -1;
         this.gameState = null;
         this.lispInterpreter = null;
+        this.gameLogic = null;
         
         this.initializeUI();
         this.initializeLispInterpreter();
+        this.initializeGameLogic();
+    }
+    
+    initializeGameLogic() {
+        // ai-debug-system.tsの修正済みロジックを統合
+        this.gameLogic = {
+            calculateCardStrength: (rank) => {
+                const strengthMap = {
+                    3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8,
+                    'J': 9, 'Q': 10, 'K': 11, 'A': 12, 2: 13
+                };
+                return strengthMap[rank] || 0;
+            },
+            
+            getPlayableCards: (hand, fieldStrength) => {
+                if (fieldStrength === 0) return hand; // 場が空なら全て出せる
+                return hand.filter(card => card.strength > fieldStrength);
+            },
+            
+            canPlayCards: (selectedCards, fieldCards) => {
+                if (!fieldCards || fieldCards.length === 0) return true;
+                const fieldStrength = fieldCards[0].strength;
+                return selectedCards.every(card => card.strength > fieldStrength);
+            }
+        };
     }
 
     async initializeLispInterpreter() {

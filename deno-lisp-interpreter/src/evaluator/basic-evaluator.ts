@@ -7,6 +7,34 @@ import { FileLoader } from "../core/file-loader.ts";
 import { PackageSystem } from "../core/package-system.ts";
 
 /**
+ * Lispエラークラス群
+ */
+export class LispError extends Error {
+  constructor(message: string, public context?: string) {
+    super(message);
+    this.name = this.constructor.name;
+  }
+}
+
+export class LispTypeError extends LispError {
+  constructor(expected: string, received: LispValue, context?: string) {
+    super(`Type error: expected ${expected}, received ${typeof received}`, context);
+  }
+}
+
+export class LispRuntimeError extends LispError {
+  constructor(message: string, context?: string) {
+    super(`Runtime error: ${message}`, context);
+  }
+}
+
+export class LispSyntaxError extends LispError {
+  constructor(message: string, context?: string) {
+    super(`Syntax error: ${message}`, context);
+  }
+}
+
+/**
  * 環境（変数と関数のスコープ）
  */
 export class Environment {
@@ -34,7 +62,7 @@ export class Environment {
     if (this.parent) {
       return this.parent.get(name);
     }
-    throw new Error(`Undefined variable: ${name}`);
+    throw new LispRuntimeError(`Undefined variable: ${name}`);
   }
 
   /**
@@ -42,6 +70,21 @@ export class Environment {
    */
   has(name: string): boolean {
     return this.bindings.has(name) || (this.parent ? this.parent.has(name) : false);
+  }
+
+  /**
+   * 変数の値を更新（既存の変数のみ）
+   */
+  set(name: string, value: LispValue): void {
+    if (this.bindings.has(name)) {
+      this.bindings.set(name, value);
+      return;
+    }
+    if (this.parent) {
+      this.parent.set(name, value);
+      return;
+    }
+    throw new LispRuntimeError(`Undefined variable: ${name}`);
   }
 }
 
@@ -245,10 +288,10 @@ export class BasicEvaluator {
             return this.evaluateInPackage(expr, env);
           case "defvar":
             return this.evaluateDefvar(expr, env);
-          case "defun":
-            return this.evaluateDefun(expr, env); 
           case "case":
             return this.evaluateCase(expr, env);
+          case "push":
+            return this.evaluatePush(expr, env);
         }
       }
 
@@ -439,8 +482,17 @@ export class BasicEvaluator {
       docstring = expr[3];
       body = expr[4];
     } else {
-      // 複数の式を持つ場合、progn形式で結合
-      body = expr.slice(3);
+      // 複数の式を持つ場合
+      let startIndex = 3;
+      
+      // docstringがある場合はスキップ
+      if (expr.length > 4 && typeof expr[3] === "string") {
+        docstring = expr[3];
+        startIndex = 4;
+      }
+      
+      // 残りをbodyとして結合
+      body = expr.slice(startIndex);
     }
 
     if (!this.isSymbol(name)) {
@@ -473,12 +525,12 @@ export class BasicEvaluator {
    * let式の評価
    */
   private evaluateLet(expr: LispValue[], env: Environment): LispValue {
-    if (expr.length !== 3) {
-      throw new Error("let requires exactly 2 arguments");
+    if (expr.length < 3) {
+      throw new Error("let requires at least 2 arguments");
     }
 
     const bindings = expr[1];
-    const body = expr[2];
+    const bodyExprs = expr.slice(2);
 
     if (!Array.isArray(bindings)) {
       throw new Error("let bindings must be a list");
@@ -501,7 +553,12 @@ export class BasicEvaluator {
       newEnv.define(name.value, this.evaluate(value, env));
     }
 
-    return this.evaluate(body, newEnv);
+    // 複数の式を順次評価し、最後の結果を返す
+    let result: LispValue = null;
+    for (const bodyExpr of bodyExprs) {
+      result = this.evaluate(bodyExpr, newEnv);
+    }
+    return result;
   }
 
   /**
@@ -588,18 +645,30 @@ export class BasicEvaluator {
     }, first);
   }
 
-  private greaterThan(a: LispValue, b: LispValue): boolean {
+  /**
+   * 数値比較のヘルパー関数
+   */
+  private compareNumbers(a: LispValue, b: LispValue, operator: string, comparison: (x: number, y: number) => boolean): boolean {
     if (typeof a !== "number" || typeof b !== "number") {
-      throw new Error("> requires numeric arguments");
+      throw new LispTypeError("number", typeof a === "number" ? b : a, operator);
     }
-    return a > b;
+    return comparison(a, b);
+  }
+
+  private greaterThan(a: LispValue, b: LispValue): boolean {
+    return this.compareNumbers(a, b, ">", (x, y) => x > y);
   }
 
   private lessThan(a: LispValue, b: LispValue): boolean {
-    if (typeof a !== "number" || typeof b !== "number") {
-      throw new Error("< requires numeric arguments");
-    }
-    return a < b;
+    return this.compareNumbers(a, b, "<", (x, y) => x < y);
+  }
+
+  private lessThanOrEqual(a: LispValue, b: LispValue): boolean {
+    return this.compareNumbers(a, b, "<=", (x, y) => x <= y);
+  }
+
+  private greaterThanOrEqual(a: LispValue, b: LispValue): boolean {
+    return this.compareNumbers(a, b, ">=", (x, y) => x >= y);
   }
 
   private equal(a: LispValue, b: LispValue): boolean {
@@ -608,20 +677,6 @@ export class BasicEvaluator {
 
   private list(...args: LispValue[]): LispValue[] {
     return args;
-  }
-
-  private lessThanOrEqual(a: LispValue, b: LispValue): boolean {
-    if (typeof a !== "number" || typeof b !== "number") {
-      throw new Error("<= requires numeric arguments");
-    }
-    return a <= b;
-  }
-
-  private greaterThanOrEqual(a: LispValue, b: LispValue): boolean {
-    if (typeof a !== "number" || typeof b !== "number") {
-      throw new Error(">= requires numeric arguments");
-    }
-    return a >= b;
   }
 
   private sqrt(x: LispValue): number {
@@ -942,6 +997,43 @@ export class BasicEvaluator {
       return sequence.length;
     }
     throw new Error("length requires a sequence");
+  }
+
+  /**
+   * push特殊フォームの評価
+   * Common Lispのpushマクロの実装
+   * 
+   * 構文: (push item place)
+   * 動作: itemをplaceリストの先頭に追加し、placeを更新
+   * 戻り値: 更新後のリスト
+   * 
+   * @param expr - [push, item, place]の形式のLisp式
+   * @param env - 現在の環境
+   * @returns 更新後のリスト
+   */
+  private evaluatePush(expr: LispValue[], env: Environment): LispValue {
+    if (expr.length !== 3) {
+      throw new LispSyntaxError("push requires exactly 2 arguments");
+    }
+    
+    const item = this.evaluate(expr[1], env);
+    const place = expr[2];
+    
+    if (!this.isSymbol(place)) {
+      throw new LispSyntaxError("push place must be a symbol");
+    }
+    
+    const variableName = place.value;
+    const currentValue = env.get(variableName);
+    
+    if (!Array.isArray(currentValue)) {
+      throw new LispTypeError("list", currentValue, "push");
+    }
+    
+    const newList = [item, ...currentValue];
+    env.set(variableName, newList);
+    
+    return newList;
   }
 
   /**
@@ -1529,20 +1621,36 @@ export class BasicEvaluator {
     }
     
     try {
-      const content = Deno.readTextFileSync(filename);
-      const parser = new SExpressionParser();
-      const evaluableLines = this.parseFileContent(content);
-      
-      let successCount = 0;
-      for (const line of evaluableLines) {
-        const result = this.safeEvaluateLine(line, parser);
-        if (result !== null) {
-          successCount++;
-        }
+      // 相対パスの場合、現在のディレクトリからの相対パスとして処理
+      let fullPath = filename;
+      if (!filename.startsWith('/')) {
+        // 実行中のファイルがある場合は、そのディレクトリを基準とする
+        const currentDir = Deno.cwd();
+        fullPath = `${currentDir}/${filename}`;
       }
       
-      console.log(`Loaded ${successCount}/${evaluableLines.length} expressions from ${filename}`);
-      return true;
+      const content = Deno.readTextFileSync(fullPath);
+      const parser = new SExpressionParser();
+      
+      try {
+        const expressions = parser.parse(content);
+        let successCount = 0;
+        
+        for (const expr of expressions) {
+          try {
+            this.evaluate(expr);
+            successCount++;
+          } catch (error) {
+            console.log(`Parse error in expression: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+        
+        console.log(`Loaded ${successCount}/${expressions.length} expressions from ${fullPath}`);
+        return successCount > 0;
+      } catch (error) {
+        console.log(`Parse error in file: ${error instanceof Error ? error.message : String(error)}`);
+        return false;
+      }
     } catch (error) {
       console.warn(`Warning: Could not load file ${filename}: ${error}`);
       return false;

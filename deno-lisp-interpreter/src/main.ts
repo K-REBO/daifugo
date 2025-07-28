@@ -86,7 +86,10 @@ class DenoLispInterpreter {
     try {
       console.log(`🔍 Evaluating: ${expression}`);
       const parsed = this.parser.parse(expression);
-      const result = this.evaluator.evaluate(parsed);
+      let result: any;
+      for (const expr of parsed) {
+        result = this.evaluator.evaluate(expr);
+      }
       console.log(`📤 Result: ${JSON.stringify(result)}`);
       return result;
     } catch (error) {
