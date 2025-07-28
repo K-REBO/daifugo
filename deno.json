@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "name": "daifugo-project",
+  "tasks": {
+    "test": "deno task test:core",
+    "test:core": "deno run --allow-read --allow-write --allow-run scripts/run-lisp-tests.ts",
+    "test:deno": "deno test deno-lisp-interpreter/test/",
+    "test:all": "deno task test:core && deno task test:deno",
+    "cli": "deno run --allow-read cli/daifugo-repl.ts",
+    "dev": "deno run --watch --allow-read cli/daifugo-repl.ts"
+  },
+  "imports": {
+    "@std/": "https://deno.land/std@0.220.0/"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true
+  }
+}
