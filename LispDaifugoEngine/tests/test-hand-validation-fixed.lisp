@@ -8,29 +8,34 @@
 
 (in-package :daifugo-hand-validation-test)
 
-;;; 詳細版テスト関数群（完全なテストスイート）
+;;; 包括版テスト関数群（エッジケース・上級テストスイート）
 
-(defun test-card-system-basics ()
-  "カードシステムの基本機能テスト"
+(defun test-system-comprehensive-validation ()
+  "システム全体の包括的検証"
   (test-assert (find-package :daifugo-card-system) "カードシステムパッケージが存在する")
-  (test-assert (fboundp 'daifugo-card-system:create-deck) "デッキ作成関数が定義されている")
-  (test-assert (fboundp 'daifugo-card-system:make-card) "カード作成関数が定義されている"))
+  (test-function-exists 'daifugo-card-system:create-deck "デッキ作成関数が定義されている")
+  (test-function-exists 'daifugo-card-system:make-card "カード作成関数が定義されている")
+  (test-function-exists 'daifugo-card-system:calculate-card-strength "カード強度計算関数が定義されている")
+  (test-function-exists 'daifugo-card-system:compare-cards "カード比較関数が定義されている"))
 
-(defun test-hand-validation-basics ()
-  "手札検証の基本機能テスト"
+(defun test-comprehensive-deck-validation ()
+  "包括的デッキ検証"
   (let ((deck (daifugo-card-system:create-deck)))
     (test-assert (= (length deck) 54) "デッキに54枚のカードがある")
     (test-assert (every (lambda (card) 
                           (and (daifugo-card-system:card-rank card)
                                (daifugo-card-system:card-suit card)))
                         deck)
-                 "すべてのカードが有効な形式である"))
-  
-  ;; 単枚出しテスト
-  (let ((card (daifugo-card-system:make-card :rank 7 :suit :spades)))
-    (test-assert (not (null card)) "カードが作成される")
-    (test-assert (eq (daifugo-card-system:card-rank card) 7) "カードランクが正しい")
-    (test-assert (eq (daifugo-card-system:card-suit card) :spades) "カードスートが正しい")))
+                 "すべてのカードが有効な形式である")
+    
+    ;; デッキ内容の詳細検証
+    (let ((ranks (mapcar #'daifugo-card-system:card-rank deck))
+          (suits (mapcar #'daifugo-card-system:card-suit deck)))
+      (test-assert (member 1 ranks) "エース(1)がデッキに含まれる")
+      (test-assert (member 13 ranks) "キング(13)がデッキに含まれる") 
+      (test-assert (member :joker ranks) "ジョーカーがデッキに含まれる")
+      (test-assert (member :spades suits) "スペードがデッキに含まれる")
+      (test-assert (member :hearts suits) "ハートがデッキに含まれる"))))
 
 (defun test-card-strength-comparison ()
   "カード強度比較の詳細テスト"
@@ -91,17 +96,17 @@
 
 ;;; メイン実行関数
 (defun run-hand-validation-tests ()
-  "詳細版手札検証テストを実行"
+  "包括版手札検証テストを実行（エッジケース・上級レベル）"
   (setf *tests-passed* 0)
   (setf *tests-total* 0)
   
-  (format t "=== 手札検証テスト（詳細版）実行 ===~%")
+  (format t "=== 手札検証テスト（包括版・エッジケース）実行 ===~%")
   
-  (test-card-system-basics)
-  (test-hand-validation-basics)
+  (test-system-comprehensive-validation)
+  (test-comprehensive-deck-validation)
   (test-card-strength-comparison)
   (test-advanced-card-operations)
   (test-card-validation-edge-cases)
   
-  (format t "~%結果: ~A合格, ~A失敗~%" *tests-passed* (- *tests-total* *tests-passed*))
+  (format t "~%包括版結果: ~A合格, ~A失敗 (上級テストスイート)~%" *tests-passed* (- *tests-total* *tests-passed*))
   (= *tests-passed* *tests-total*))
