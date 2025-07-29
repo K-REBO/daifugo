@@ -57,8 +57,9 @@ class LispTestRunner {
   async runAllTests(): Promise<void> {
     console.log("🚀 LispDaifugoEngine テスト開始\n");
 
-    // テスト定義
+    // テスト定義（全テストファイルを含む）
     const tests = [
+      // 基本構造・仕様テスト
       {
         name: "プロジェクト構造テスト",
         script: this.createTestScript([
@@ -66,6 +67,15 @@ class LispTestRunner {
           '(daifugo-structure-test:run-structure-tests)'
         ])
       },
+      {
+        name: "仕様書テスト",
+        script: this.createTestScript([
+          '(load "tests/test-spec.lisp")',
+          '(daifugo-spec-test:run-spec-tests)'
+        ])
+      },
+      
+      // コアシステムテスト
       {
         name: "カードシステムテスト", 
         script: this.createTestScript([
@@ -83,6 +93,196 @@ class LispTestRunner {
           '(daifugo-player-system-test:run-player-system-tests)'
         ])
       },
+      
+      // ユーティリティテスト
+      {
+        name: "カードユーティリティテスト",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/utils/card-utils.lisp")',
+          '(load "tests/test-card-utils.lisp")',
+          '(daifugo-card-utils-test:run-card-utils-tests)'
+        ])
+      },
+      {
+        name: "プレイヤーユーティリティテスト",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/core/player-system.lisp")',
+          '(load "src/utils/player-utils.lisp")',
+          '(load "tests/test-player-utils.lisp")',
+          '(daifugo-player-utils-test:run-player-utils-tests)'
+        ])
+      },
+      
+      // ゲームロジックテスト
+      {
+        name: "ゲームロジックテスト（修正版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/core/player-system.lisp")',
+          '(load "src/core/game-state.lisp")',
+          '(load "tests/test-game-logic-fixed.lisp")',
+          '(daifugo-game-logic-test:run-all-tests)'
+        ])
+      },
+      {
+        name: "ゲームロジックテスト（実装付き・修正版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/core/player-system.lisp")',
+          '(load "src/core/game-state.lisp")',
+          '(load "tests/test-game-logic-with-implementation-fixed.lisp")',
+          '(daifugo-game-logic-implementation-test:run-implementation-tests)'
+        ])
+      },
+      {
+        name: "ゲームフローテスト（修正版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/core/player-system.lisp")',
+          '(load "src/core/game-state.lisp")',
+          '(load "tests/test-game-flow-fixed.lisp")',
+          '(daifugo-game-flow-test:run-game-flow-tests)'
+        ])
+      },
+      
+      // 手札検証テスト
+      {
+        name: "手札検証テスト（修正版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "tests/test-hand-validation-fixed.lisp")',
+          '(daifugo-hand-validation-test:run-hand-validation-tests)'
+        ])
+      },
+      {
+        name: "手札検証テスト（簡易版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "tests/core/test-hand-validation-simple.lisp")',
+          '(daifugo-hand-validation-simple-test:run-hand-validation-simple-tests)'
+        ])
+      },
+      {
+        name: "手札検証テスト（コア）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "tests/core/test-hand-validation.lisp")',
+          '(daifugo-hand-validation-core-test:run-hand-validation-tests)'
+        ])
+      },
+
+      // ロガーテスト
+      {
+        name: "ゲームロガーテスト",
+        script: this.createTestScript([
+          '(load "src/testing/game-logger.lisp")',
+          '(load "tests/core/test-game-logger.lisp")',
+          '(daifugo-game-logger-test:run-game-logger-tests)'
+        ])
+      },
+
+      // ルールシステムテスト
+      {
+        name: "ルールローダーテスト",
+        script: this.createTestScript([
+          '(load "src/rules/rule-loader.lisp")',
+          '(load "tests/rules/test-rule-loader.lisp")',
+          '(daifugo-rule-loader-test:run-rule-loader-tests)'
+        ])
+      },
+      {
+        name: "ルールセットテスト",
+        script: this.createTestScript([
+          '(load "src/rules/rule-loader.lisp")',
+          '(load "src/rules/rule-set.lisp")',
+          '(load "tests/rules/test-rule-set.lisp")',
+          '(daifugo-rule-set-test:run-rule-set-tests)'
+        ])
+      },
+
+      // 個別ルールテスト
+      {
+        name: "8切りルールテスト",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/8kiri.lisp")',
+          '(load "tests/rules/test-8kiri.lisp")',
+          '(daifugo-8kiri-test:run-8kiri-tests)'
+        ])
+      },
+      {
+        name: "8切りルールテスト（簡易版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/8kiri.lisp")',
+          '(load "tests/rules/test-8kiri-simple.lisp")',
+          '(daifugo-8kiri-simple-test:run-8kiri-simple-tests)'
+        ])
+      },
+      {
+        name: "革命ルールテスト",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/kakumei.lisp")',
+          '(load "tests/rules/test-kakumei.lisp")',
+          '(daifugo-kakumei-test:run-kakumei-tests)'
+        ])
+      },
+      {
+        name: "革命ルールテスト（簡易版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/kakumei.lisp")',
+          '(load "tests/rules/test-kakumei-simple.lisp")',
+          '(daifugo-kakumei-simple-test:run-kakumei-simple-tests)'
+        ])
+      },
+      {
+        name: "階段ルールテスト",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/kaidan.lisp")',
+          '(load "tests/rules/test-kaidan.lisp")',
+          '(daifugo-kaidan-test:run-kaidan-tests)'
+        ])
+      },
+      {
+        name: "階段ルールテスト（簡易版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/kaidan.lisp")',
+          '(load "tests/rules/test-kaidan-simple.lisp")',
+          '(daifugo-kaidan-simple-test:run-kaidan-simple-tests)'
+        ])
+      },
+      {
+        name: "拡張ローカルルールテスト",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/11back.lisp")',
+          '(load "src/rules/suit-binding.lisp")',
+          '(load "src/rules/spade3-return.lisp")',
+          '(load "src/rules/miyako-ochi.lisp")',
+          '(load "tests/rules/test-extended-local-rules.lisp")',
+          '(daifugo-extended-local-rules-test:run-extended-local-rules-tests)'
+        ])
+      },
+      {
+        name: "拡張ルールテスト（簡易版）",
+        script: this.createTestScript([
+          '(load "src/core/card-system.lisp")',
+          '(load "src/rules/11back.lisp")',
+          '(load "src/rules/suit-binding.lisp")',
+          '(load "src/rules/spade3-return.lisp")',
+          '(load "src/rules/miyako-ochi.lisp")',
+          '(load "tests/rules/test-extended-rules-simple.lisp")',
+          '(daifugo-extended-rules-simple-test:run-extended-rules-simple-tests)'
+        ])
+      },
+
+      // 統合テスト
       {
         name: "統合テスト",
         script: this.createTestScript([
