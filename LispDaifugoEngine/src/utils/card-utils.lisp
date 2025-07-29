@@ -32,13 +32,6 @@
                (eql (daifugo-card-system:card-suit card) first-suit))
              cards))))
 
-;;; カードソート（ヘルパー関数）
-(defun sort-cards (cards &optional (descending nil))
-  "カードを強度順にソートする"
-  (sort (copy-list cards) 
-        (if descending #'> #'<)
-        :key #'daifugo-card-system:card-strength))
-
 ;;; シーケンスかどうか
 (defun is-sequence-p (cards)
   "カードが連続したシーケンスかどうかを判定する"
@@ -71,6 +64,12 @@
     (subseq sorted-cards 0 (min count (length sorted-cards)))))
 
 ;;; カードソート
+(defun sort-cards (cards &optional (descending nil))
+  "カードを強度順にソートする"
+  (sort (copy-list cards) 
+        (if descending #'> #'<)
+        :key #'daifugo-card-system:card-strength))
+
 ;;; ランクでフィルタ
 (defun filter-cards-by-rank (cards rank)
   "指定されたランクのカードをフィルタする"
