@@ -20,7 +20,8 @@
 
 (defpackage :daifugo-game-logic
   (:use :common-lisp :daifugo-card-system :daifugo-game-state)
-  (:export #:is-valid-hand #:get-hand-type #:is-stronger-hand #:hands-compatible-p))
+  (:export #:is-valid-hand #:get-hand-type #:is-stronger-hand #:hands-compatible-p 
+           #:process-card-play #:play-card))
 
 (defpackage :daifugo-rule-engine
   (:use :common-lisp)
@@ -28,10 +29,14 @@
 
 (defpackage :daifugo-game-engine
   (:use :common-lisp :daifugo-game-state :daifugo-game-logic :daifugo-rule-engine)
-  (:export #:start-game
+  (:export #:create-game
+           #:start-game
            #:play-turn
            #:get-game-status
            #:game-state-revolution-p
+           #:game-state-players
+           #:game-state-field
+           #:game-state-current-player
            #:add-log))
 
 ;;; ---------------------------------------------------------------------------

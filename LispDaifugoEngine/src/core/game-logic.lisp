@@ -99,3 +99,57 @@
        (is-valid-hand hand2)
        (eq (get-hand-type hand1) (get-hand-type hand2))
        (= (length hand1) (length hand2))))
+
+;;; ============================================================================
+;;; ゲームプレイ処理関数
+;;; ============================================================================
+
+(defun process-card-play (game-state player-id cards)
+  "カードプレイを処理する（Game Engine用）"
+  (when (and (is-valid-hand cards)
+             (player-has-cards-p game-state player-id cards)
+             (can-play-cards-p game-state cards))
+    ;; カードを手札から削除
+    (remove-cards-from-player game-state player-id cards)
+    ;; フィールドに配置  
+    (set-field-cards game-state cards)
+    ;; ターンを進める
+    (advance-turn game-state)
+    t))
+
+(defun player-has-cards-p (game-state player-id cards)
+  "プレイヤーが指定されたカードを持っているかチェック"
+  (let ((players (slot-value game-state 'daifugo-game-engine::players)))
+    (let ((player (nth player-id players)))
+      (when player
+        (let ((hand (daifugo-player-system:player-hand player)))
+          (every (lambda (card) (member card hand :test #'equal)) cards))))))
+
+(defun can-play-cards-p (game-state cards)
+  "カードをプレイできるかチェック（フィールドとの比較）" 
+  (let ((field-cards (slot-value game-state 'daifugo-game-engine::field)))
+    (if field-cards
+        ;; フィールドにカードがある場合：より強いカードのみプレイ可能
+        (and (hands-compatible-p cards field-cards)
+             (is-stronger-hand cards field-cards))
+        ;; フィールドが空の場合：どんなカードでもプレイ可能
+        t)))
+
+(defun remove-cards-from-player (game-state player-id cards)
+  "プレイヤーの手札からカードを削除"
+  (let ((players (slot-value game-state 'daifugo-game-engine::players)))
+    (let ((player (nth player-id players)))
+      (when player
+        (dolist (card cards)
+          (daifugo-player-system:remove-card-from-hand player card))))))
+
+(defun set-field-cards (game-state cards)
+  "フィールドにカードを設定"
+  (setf (slot-value game-state 'daifugo-game-engine::field) cards))
+
+(defun advance-turn (game-state)
+  "ターンを進める"
+  (let ((current (slot-value game-state 'daifugo-game-engine::current-player))
+        (players (slot-value game-state 'daifugo-game-engine::players)))
+    (setf (slot-value game-state 'daifugo-game-engine::current-player)
+          (mod (1+ current) (length players)))))
