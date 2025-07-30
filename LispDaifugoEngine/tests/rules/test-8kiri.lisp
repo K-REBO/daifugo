@@ -1,4 +1,4 @@
-;;; test-8kiri.lisp - 8切りルール（8kiri.lisp）の包括的テスト
+;;; test-8kiri.lisp - 8切りルールの統合テスト（包括版+簡易版統合）
 ;;; 
 ;;; 本テストは以下の機能をカバーします：
 ;;; - 8切りの発動条件（8のカードでフィールドをクリア）
@@ -6,13 +6,15 @@
 ;;; - 8切りと他ルールの相互作用
 ;;; - 特殊ケース（複数枚の8、ジョーカー含む等）
 ;;; - ゲームエンジンとの統合テスト
+;;; - 簡易版基本機能テスト
 
 (load "../debug/final-test.lisp")
 
-(defpackage :daifugo-8kiri-test
-  (:use :common-lisp))
+(defpackage :daifugo-8kiri-integrated-test
+  (:use :common-lisp)
+  (:export #:run-8kiri-tests #:run-simple-8kiri-tests))
 
-(in-package :daifugo-8kiri-test)
+(in-package :daifugo-8kiri-integrated-test)
 
 ;;; ==========================================
 ;;; 8切りルール基本機能テスト
@@ -333,11 +335,124 @@
       (< elapsed-time 1.0))))  ; 1秒以内での完了を期待
 
 ;;; ==========================================
+;;; 簡易版テスト（旧simple版から統合）
+;;; ==========================================
+
+;; 簡易カード構造
+(defstruct simple-card-detailed rank suit)
+
+;; 簡易8切りシステム構造
+(defstruct simple-8kiri-detailed
+  enabled-p
+  count)
+
+;; 簡易フィールド状態構造
+(defstruct simple-field-detailed
+  cards
+  restriction
+  reset-p)
+
+;; 基本8切りシステム
+(defun create-simple-8kiri-detailed ()
+  "簡易8切りシステムを作成（詳細版）"
+  (make-simple-8kiri-detailed :enabled-p t :count 0))
+
+(defun create-simple-field-detailed ()
+  "簡易フィールド状態を作成（詳細版）"
+  (make-simple-field-detailed :cards nil :restriction :none :reset-p nil))
+
+(defun simple-is-8-card-p-detailed (card)
+  "8カード判定（詳細版）"
+  (= (simple-card-detailed-rank card) 8))
+
+(defun simple-detect-8kiri-detailed (kiri-system cards)
+  "8切り検出（詳細版）"
+  (and (simple-8kiri-detailed-enabled-p kiri-system)
+       cards
+       (every #'simple-is-8-card-p-detailed cards)))
+
+(defun simple-execute-8kiri-detailed (kiri-system field-state cards)
+  "8切り実行（詳細版）"
+  (when (simple-detect-8kiri-detailed kiri-system cards)
+    ;; フィールドをクリア
+    (setf (simple-field-detailed-cards field-state) nil)
+    (setf (simple-field-detailed-restriction field-state) :none)
+    (setf (simple-field-detailed-reset-p field-state) t)
+    ;; カウント増加
+    (incf (simple-8kiri-detailed-count kiri-system))
+    t))
+
+;; 簡易版テスト関数群
+(defun test-simple-8kiri-creation-detailed ()
+  "8切りシステム作成テスト（詳細版）"
+  (let ((kiri (create-simple-8kiri-detailed)))
+    (and kiri
+         (simple-8kiri-detailed-p kiri)
+         (simple-8kiri-detailed-enabled-p kiri)
+         (= (simple-8kiri-detailed-count kiri) 0))))
+
+(defun test-simple-8-detection-detailed ()
+  "8カード検出テスト（詳細版）"
+  (let ((eight-card (make-simple-card-detailed :rank 8 :suit :spades))
+        (seven-card (make-simple-card-detailed :rank 7 :suit :hearts)))
+    (and (simple-is-8-card-p-detailed eight-card)
+         (not (simple-is-8-card-p-detailed seven-card)))))
+
+(defun test-simple-8kiri-trigger-detailed ()
+  "8切り発動テスト（詳細版）"
+  (let ((kiri (create-simple-8kiri-detailed))
+        (eight-cards (list (make-simple-card-detailed :rank 8 :suit :spades))))
+    (and (simple-detect-8kiri-detailed kiri eight-cards)
+         (not (simple-detect-8kiri-detailed kiri 
+                                           (list (make-simple-card-detailed :rank 7 :suit :hearts)))))))
+
+(defun test-simple-field-clear-detailed ()
+  "フィールドクリアテスト（詳細版）"
+  (let ((kiri (create-simple-8kiri-detailed))
+        (field (create-simple-field-detailed)))
+    ;; フィールドにカードを配置
+    (setf (simple-field-detailed-cards field) 
+          (list (make-simple-card-detailed :rank 10 :suit :hearts)))
+    (setf (simple-field-detailed-restriction field) :suit-lock)
+    
+    ;; 8切り実行
+    (simple-execute-8kiri-detailed kiri field 
+                          (list (make-simple-card-detailed :rank 8 :suit :spades)))
+    
+    ;; フィールドがクリアされている
+    (and (null (simple-field-detailed-cards field))
+         (eq (simple-field-detailed-restriction field) :none)
+         (simple-field-detailed-reset-p field)
+         (= (simple-8kiri-detailed-count kiri) 1))))
+
+(defun test-simple-multiple-8s-detailed ()
+  "複数8テスト（詳細版）"
+  (let ((kiri (create-simple-8kiri-detailed))
+        (field (create-simple-field-detailed))
+        (multiple-8s (list (make-simple-card-detailed :rank 8 :suit :spades)
+                          (make-simple-card-detailed :rank 8 :suit :hearts))))
+    (and (simple-execute-8kiri-detailed kiri field multiple-8s)
+         (= (simple-8kiri-detailed-count kiri) 1)
+         (simple-field-detailed-reset-p field))))
+
+(defun test-simple-8kiri-disabled-detailed ()
+  "8切り無効化テスト（詳細版）"
+  (let ((kiri (create-simple-8kiri-detailed))
+        (field (create-simple-field-detailed)))
+    ;; 8切りを無効化
+    (setf (simple-8kiri-detailed-enabled-p kiri) nil)
+    
+    ;; 8切りが発動しない
+    (and (not (simple-execute-8kiri-detailed kiri field 
+                                    (list (make-simple-card-detailed :rank 8 :suit :clubs))))
+         (= (simple-8kiri-detailed-count kiri) 0))))
+
+;;; ==========================================
 ;;; テスト実行関数
 ;;; ==========================================
 
 (defun run-8kiri-tests ()
-  "8切りルールシステムの全テストを実行"
+  "8切りルールシステムの全テスト（包括版）を実行"
   (format t "~%=== 8切りルール（8kiri.lisp）テスト実行 ===~%")
   
   (let ((tests '(("8切りルールシステム作成" . test-8kiri-rule-creation)
@@ -384,9 +499,38 @@
             (format t "エラー: ~A~%" e)
             (incf failed)))))
     
-    (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
+    (format t "~%包括版結果: ~A合格, ~A失敗 (計25テスト関数)~%" passed failed)
+    (= failed 0)))
+
+(defun run-simple-8kiri-tests ()
+  "簡易8切りテスト（軽量版）を実行"
+  (format t "~%=== 簡易8切りルールテスト実行 ===~%")
+  
+  (let ((tests '(("8切りシステム作成" . test-simple-8kiri-creation-detailed)
+                 ("8カード検出" . test-simple-8-detection-detailed)
+                 ("8切り発動" . test-simple-8kiri-trigger-detailed)
+                 ("フィールドクリア" . test-simple-field-clear-detailed)
+                 ("複数8処理" . test-simple-multiple-8s-detailed)
+                 ("8切り無効化" . test-simple-8kiri-disabled-detailed)))
+        (passed 0)
+        (failed 0))
+    
+    (dolist (test tests)
+      (let ((test-name (car test))
+            (test-func (cdr test)))
+        (format t "テスト: ~A ... " test-name)
+        (if (funcall test-func)
+            (progn
+              (format t "合格~%")
+              (incf passed))
+            (progn
+              (format t "失敗~%")
+              (incf failed)))))
+    
+    (format t "~%軽量版結果: ~A合格, ~A失敗 (計6テスト)~%" passed failed)
     (= failed 0)))
 
 ;; テスト実行
-(format t "~%8切りルール（8kiri.lisp）のテストケース準備完了~%")
-(format t "実装完了後に (run-8kiri-tests) を実行してください~%")
+(format t "~%8切りルール統合テストケース準備完了~%")
+(format t "包括版実行: (run-8kiri-tests)~%")
+(format t "軽量版実行: (run-simple-8kiri-tests)~%")

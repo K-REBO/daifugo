@@ -1,65 +1,108 @@
 # LispDaifugoEngine テストシステム
 
-復元された元のテスト要件定義を使用したテストシステムです。
+Quicklisp + Fiveamフレームワークを使用した近代的テストシステムです。
+
+## 📋 必要環境
+- SBCL (Common Lisp実装)
+- Quicklisp (パッケージ管理)
+- Fiveam (テストフレームワーク)
 
 ## 🚀 テスト実行方法
 
 ### 全テスト実行
 ```bash
-sbcl --load test-runners/all-tests.lisp --quit
+sbcl --eval "(ql:quickload :fiveam)" \
+     --load "test-runners/all-tests-runner.lisp" \
+     --eval "(daifugo-test-runners:daifugo-run-all-tests)" \
+     --quit
 ```
 
 ### カテゴリ別テスト実行
 
 #### コアシステムテスト
 ```bash
-sbcl --load test-runners/core-tests.lisp --quit
+sbcl --eval "(ql:quickload :fiveam)" \
+     --load "test-runners/all-tests-runner.lisp" \
+     --eval "(daifugo-test-runners:daifugo-run-core-tests)" \
+     --quit
 ```
+
+#### 基本ルールシステムテスト
+```bash
+sbcl --eval "(ql:quickload :fiveam)" \
+     --load "test-runners/all-tests-runner.lisp" \
+     --eval "(daifugo-test-runners:daifugo-run-rules-tests)" \
+     --quit
+```
+
+#### ローカルルールシステムテスト（重要仕様）
+```bash
+sbcl --eval "(ql:quickload :fiveam)" \
+     --load "test-runners/all-tests-runner.lisp" \
+     --eval "(daifugo-test-runners:daifugo-run-local-rules-tests)" \
+     --quit
+```
+
+#### APIテスト
+```bash
+sbcl --eval "(ql:quickload :fiveam)" \
+     --load "test-runners/all-tests-runner.lisp" \
+     --eval "(daifugo-test-runners:daifugo-run-api-tests)" \
+     --quit
+```
+
+#### 統合テスト
+```bash
+sbcl --eval "(ql:quickload :fiveam)" \
+     --load "test-runners/all-tests-runner.lisp" \
+     --eval "(daifugo-test-runners:daifugo-run-integration-tests)" \
+     --quit
+## 📁 テスト構造
+
+### テストカテゴリ
+
+#### 🏗️ コアシステムテスト
 - プロジェクト構造、仕様書
 - カードシステム、プレイヤーシステム
 - ゲームロジック、ゲームフロー
 - 手札検証システム
-- ゲームロガー、AIプレイヤー
 
-#### ルールシステムテスト
-```bash
-sbcl --load test-runners/rules-tests.lisp --quit
-```
-- ルールローダー、ルールセット
-- 8切りルール（19KB）
-- 革命ルール（19KB）
-- 階段ルール（23KB）
-- 拡張ローカルルール（25KB）
+#### 🎮 基本ルールシステムテスト
+- ルールセット管理
+- 8切りルール（簡易版）
+- 革命ルール（簡易版）
+- 階段ルール（簡易版）
+- 拡張ルール（簡易版）
 
-#### API層テスト
-```bash
-sbcl --load test-runners/api-tests.lisp --quit
-```
+#### 🏠 ローカルルールシステムテスト（重要仕様）
+- ルールローダー（355行仕様）
+- 8切りルール（19KB完全仕様）
+- 革命ルール（19KB完全仕様）
+- 階段ルール（23KB完全仕様）
+- 拡張ローカルルール（25KB完全仕様）
+
+#### 🔌 API層テスト
 - JavaScript API
 - イベントシステム
 
-#### 統合テスト
-```bash
-sbcl --load test-runners/integration-tests.lisp --quit
-```
-- 基本統合テスト
-- 完全統合テスト
-- 大規模テスト
+#### 🔗 統合テスト
+- エンドツーエンドテスト
 - パフォーマンステスト
 
-## 📁 テスト構造
+## 📁 ファイル構造
 
 ```
 test-runners/
-├── all-tests.lisp       # 全テスト実行
-├── core-tests.lisp      # コアシステム
-├── rules-tests.lisp     # ルールシステム
-├── api-tests.lisp       # API層
-└── integration-tests.lisp # 統合テスト
+├── all-tests-runner.lisp         # 全テスト統合実行
+├── core-tests-runner.lisp        # コアシステム
+├── rules-tests-runner.lisp       # 基本ルールシステム
+├── local-rules-tests-runner.lisp # ローカルルール（重要仕様）
+├── api-tests-runner.lisp         # API層
+└── integration-tests-runner.lisp # 統合テスト
 
 tests/
 ├── core/               # コアコンポーネント
-├── rules/              # ルールシステム
+├── rules/              # ルールシステム（基本＋ローカル）
 ├── api/                # API層
 ├── events/             # イベントシステム
 ├── integration/        # 統合テスト

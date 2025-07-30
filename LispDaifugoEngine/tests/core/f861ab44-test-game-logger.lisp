@@ -2,10 +2,11 @@
 
 (load "../debug/final-test.lisp")
 
-(defpackage :daifugo-game-logger-test
-  (:use :common-lisp))
+(defpackage :daifugo-game-logger-integrated-test
+  (:use :common-lisp)
+  (:export #:run-game-logger-tests #:run-simple-game-logger-tests))
 
-(in-package :daifugo-game-logger-test)
+(in-package :daifugo-game-logger-integrated-test)
 
 ;;; ==========================================
 ;;; 基本ロガー機能テスト

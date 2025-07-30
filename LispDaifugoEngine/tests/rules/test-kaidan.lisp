@@ -9,10 +9,11 @@
 
 (load "../debug/final-test.lisp")
 
-(defpackage :daifugo-kaidan-test
-  (:use :common-lisp))
+(defpackage :daifugo-kaidan-integrated-test
+  (:use :common-lisp)
+  (:export #:run-kaidan-tests #:run-simple-kaidan-tests))
 
-(in-package :daifugo-kaidan-test)
+(in-package :daifugo-kaidan-integrated-test)
 
 ;;; ==========================================
 ;;; 階段ルール基本機能テスト
@@ -379,6 +380,158 @@
       (< elapsed-time 1.0))))  ; 1秒以内での完了を期待
 
 ;;; ==========================================
+;;; 簡易テスト関数（詳細バージョン）
+;;; ==========================================
+
+;; 簡易カード構造
+(defstruct simple-card rank suit)
+
+;; 簡易階段システム構造
+(defstruct simple-kaidan
+  enabled-p
+  min-length
+  strength-mode)
+
+;; 簡易フィールド状態構造
+(defstruct simple-field
+  cards
+  kaidan-length
+  has-kaidan-p)
+
+;; 基本階段システム
+(defun create-simple-kaidan ()
+  "簡易階段システムを作成"
+  (make-simple-kaidan :enabled-p t :min-length 3 :strength-mode :min-rank))
+
+(defun create-simple-field ()
+  "簡易フィールド状態を作成"
+  (make-simple-field :cards nil :kaidan-length 0 :has-kaidan-p nil))
+
+(defun simple-get-card-ranks (cards)
+  "カードからランクを抽出"
+  (mapcar #'simple-card-rank cards))
+
+(defun simple-is-consecutive-p (ranks)
+  "ランクが連続しているかを判定"
+  (when (and ranks (>= (length ranks) 3))
+    (let ((sorted-ranks (sort (copy-list ranks) #'<)))
+      (every (lambda (i)
+               (= (nth (1+ i) sorted-ranks) (1+ (nth i sorted-ranks))))
+             (loop for i from 0 below (1- (length sorted-ranks)) collect i)))))
+
+(defun simple-is-valid-kaidan-p (kaidan-system cards)
+  "有効階段判定"
+  (and (simple-kaidan-enabled-p kaidan-system)
+       cards
+       (>= (length cards) (simple-kaidan-min-length kaidan-system))
+       (simple-is-consecutive-p (simple-get-card-ranks cards))))
+
+(defun simple-get-kaidan-min-rank (cards)
+  "階段の最小ランク取得"
+  (when cards
+    (apply #'min (simple-get-card-ranks cards))))
+
+(defun simple-compare-kaidan (kaidan-system kaidan1 kaidan2)
+  "階段比較"
+  (when (and (simple-is-valid-kaidan-p kaidan-system kaidan1)
+             (simple-is-valid-kaidan-p kaidan-system kaidan2)
+             (= (length kaidan1) (length kaidan2)))
+    (let ((strength1 (simple-get-kaidan-min-rank kaidan1))
+          (strength2 (simple-get-kaidan-min-rank kaidan2)))
+      (> strength1 strength2))))
+
+(defun simple-place-kaidan-on-field (field-state cards)
+  "フィールドに階段配置"
+  (when cards
+    (setf (simple-field-cards field-state) cards)
+    (setf (simple-field-kaidan-length field-state) (length cards))
+    (setf (simple-field-has-kaidan-p field-state) t)
+    t))
+
+;; 簡易テスト関数群（詳細バージョン）
+(defun test-simple-kaidan-creation-detailed ()
+  "階段システム作成テスト（詳細）"
+  (let ((kaidan (create-simple-kaidan)))
+    (and kaidan
+         (simple-kaidan-p kaidan)
+         (simple-kaidan-enabled-p kaidan)
+         (= (simple-kaidan-min-length kaidan) 3))))
+
+(defun test-simple-basic-sequence-detailed ()
+  "基本階段検出テスト（詳細）"
+  (let ((kaidan (create-simple-kaidan)))
+    ;; 3-4-5の階段
+    (let ((sequence (list (make-simple-card :rank 3 :suit :spades)
+                         (make-simple-card :rank 4 :suit :hearts)
+                         (make-simple-card :rank 5 :suit :diamonds))))
+      (and (simple-is-valid-kaidan-p kaidan sequence)
+           (= (simple-get-kaidan-min-rank sequence) 3)))))
+
+(defun test-simple-longer-sequence-detailed ()
+  "長い階段テスト（詳細）"
+  (let ((kaidan (create-simple-kaidan)))
+    ;; 6-7-8-9の階段
+    (let ((sequence (list (make-simple-card :rank 6 :suit :spades)
+                         (make-simple-card :rank 7 :suit :hearts)
+                         (make-simple-card :rank 8 :suit :diamonds)
+                         (make-simple-card :rank 9 :suit :clubs))))
+      (and (simple-is-valid-kaidan-p kaidan sequence)
+           (= (length sequence) 4)))))
+
+(defun test-simple-invalid-sequence-detailed ()
+  "無効階段テスト（詳細）"
+  (let ((kaidan (create-simple-kaidan)))
+    ;; 飛び階段（3-5-7）
+    (let ((skip-sequence (list (make-simple-card :rank 3 :suit :spades)
+                              (make-simple-card :rank 5 :suit :hearts)
+                              (make-simple-card :rank 7 :suit :diamonds)))
+          ;; 短すぎる階段
+          (short-sequence (list (make-simple-card :rank 8 :suit :spades)
+                               (make-simple-card :rank 9 :suit :hearts))))
+      (and (not (simple-is-valid-kaidan-p kaidan skip-sequence))
+           (not (simple-is-valid-kaidan-p kaidan short-sequence))))))
+
+(defun test-simple-kaidan-comparison-detailed ()
+  "階段比較テスト（詳細）"
+  (let ((kaidan (create-simple-kaidan)))
+    ;; 4-5-6 vs 7-8-9
+    (let ((weak-kaidan (list (make-simple-card :rank 4 :suit :spades)
+                            (make-simple-card :rank 5 :suit :hearts)
+                            (make-simple-card :rank 6 :suit :diamonds)))
+          (strong-kaidan (list (make-simple-card :rank 7 :suit :clubs)
+                              (make-simple-card :rank 8 :suit :spades)
+                              (make-simple-card :rank 9 :suit :hearts))))
+      (and (simple-compare-kaidan kaidan strong-kaidan weak-kaidan)
+           (not (simple-compare-kaidan kaidan weak-kaidan strong-kaidan))))))
+
+(defun test-simple-field-placement-detailed ()
+  "フィールド配置テスト（詳細）"
+  (let ((field (create-simple-field)))
+    (let ((kaidan (list (make-simple-card :rank 5 :suit :spades)
+                       (make-simple-card :rank 6 :suit :hearts)
+                       (make-simple-card :rank 7 :suit :diamonds))))
+      (simple-place-kaidan-on-field field kaidan)
+      (and (simple-field-has-kaidan-p field)
+           (= (simple-field-kaidan-length field) 3)
+           (equal (simple-field-cards field) kaidan)))))
+
+(defun test-simple-min-length-setting-detailed ()
+  "最小長さ設定テスト（詳細）"
+  (let ((kaidan (create-simple-kaidan)))
+    ;; 最小長さを4に変更
+    (setf (simple-kaidan-min-length kaidan) 4)
+    (let ((short-kaidan (list (make-simple-card :rank 3 :suit :spades)
+                             (make-simple-card :rank 4 :suit :hearts)
+                             (make-simple-card :rank 5 :suit :diamonds)))
+          (valid-kaidan (list (make-simple-card :rank 6 :suit :clubs)
+                             (make-simple-card :rank 7 :suit :spades)
+                             (make-simple-card :rank 8 :suit :hearts)
+                             (make-simple-card :rank 9 :suit :diamonds))))
+      (and (= (simple-kaidan-min-length kaidan) 4)
+           (not (simple-is-valid-kaidan-p kaidan short-kaidan))
+           (simple-is-valid-kaidan-p kaidan valid-kaidan)))))
+
+;;; ==========================================
 ;;; テスト実行関数
 ;;; ==========================================
 
@@ -434,6 +587,36 @@
     (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
     (= failed 0)))
 
+(defun run-simple-kaidan-tests ()
+  "簡易階段テスト実行"
+  (format t "~%=== 簡易階段出しルールテスト実行 ===~%")
+  
+  (let ((tests '(("階段システム作成（詳細）" . test-simple-kaidan-creation-detailed)
+                 ("基本階段検出（詳細）" . test-simple-basic-sequence-detailed)
+                 ("長い階段（詳細）" . test-simple-longer-sequence-detailed)
+                 ("無効階段除外（詳細）" . test-simple-invalid-sequence-detailed)
+                 ("階段比較（詳細）" . test-simple-kaidan-comparison-detailed)
+                 ("フィールド配置（詳細）" . test-simple-field-placement-detailed)
+                 ("最小長さ設定（詳細）" . test-simple-min-length-setting-detailed)))
+        (passed 0)
+        (failed 0))
+    
+    (dolist (test tests)
+      (let ((test-name (car test))
+            (test-func (cdr test)))
+        (format t "テスト: ~A ... " test-name)
+        (if (funcall test-func)
+            (progn
+              (format t "合格~%")
+              (incf passed))
+            (progn
+              (format t "失敗~%")
+              (incf failed)))))
+    
+    (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
+    (= failed 0)))
+
 ;; テスト実行
 (format t "~%階段出しルール（kaidan.lisp）のテストケース準備完了~%")
-(format t "実装完了後に (run-kaidan-tests) を実行してください~%")
+(format t "詳細テスト: (daifugo-kaidan-integrated-test:run-kaidan-tests)~%")
+(format t "簡易テスト: (daifugo-kaidan-integrated-test:run-simple-kaidan-tests)~%")

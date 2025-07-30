@@ -8,6 +8,7 @@
            #:card-rank
            #:card-suit
            #:card-strength
+           #:card-p
            #:calculate-card-strength
            #:*card-strength-map*
            #:create-deck
@@ -76,16 +77,16 @@
              :strength (calculate-card-strength rank)))
 
 ;;; デッキ作成
-(defun create-deck ()
-  "標準的な54枚デッキを作成する"
+(defun create-deck (&key (joker-count 2))
+  "標準的なデッキを作成する（ジョーカー枚数可変）"
   (let ((deck nil))
     ;; 通常のカード (52枚)
     (dolist (suit '(:spades :hearts :diamonds :clubs))
       (dolist (rank '(3 4 5 6 7 8 9 10 J Q K A 2))
         (push (create-card rank suit) deck)))
-    ;; ジョーカー (2枚)
-    (push (create-card 'JOKER :joker) deck)
-    (push (create-card 'JOKER :joker) deck)
+    ;; ジョーカー (可変枚数)
+    (dotimes (i joker-count)
+      (push (create-card 'JOKER :joker) deck))
     deck))
 
 ;;; デッキシャッフル
@@ -97,8 +98,25 @@
         (rotatef (nth i shuffled) (nth j shuffled))))
     shuffled))
 
-;;; カード配布（削除予定 - game-engineに移動）
-;; この関数は game-engine.lisp に移動されました
+;;; カード配布
+(defun deal-cards (deck player-count)
+  "デッキをプレイヤーに配布する"
+  (when (< player-count 2)
+    (error "プレイヤー数は2人以上である必要があります: ~A" player-count))
+  
+  (let ((cards-per-player (floor (length deck) player-count))
+        (hands (make-list player-count :initial-element nil))
+        (card-index 0))
+    
+    ;; ラウンドロビン方式で配布
+    (dotimes (round cards-per-player)
+      (dotimes (player player-count)
+        (when (< card-index (length deck))
+          (push (nth card-index deck) (nth player hands))
+          (incf card-index))))
+    
+    ;; 各手札を逆順にして配布順を正す
+    (mapcar #'nreverse hands)))
 
 ;;; カード比較
 (defun compare-cards (card1 card2)

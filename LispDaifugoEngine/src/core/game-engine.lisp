@@ -1,27 +1,4 @@
-;;; game-engine.lisp - メインゲームエンジン
 
-(defpackage :daifugo-game-engine
-  (:use :common-lisp)
-  (:export #:game-state
-           #:game-state-p
-           #:game-state-players
-           #:game-state-current-player
-           #:game-state-field
-           #:game-state-deck
-           #:game-state-turn-direction
-           #:game-state-game-phase
-           #:game-state-revolution-p
-           #:game-state-logs
-           #:create-game
-           #:start-game
-           #:play-card
-           #:pass-turn
-           #:get-current-player
-           #:game-over-p
-           #:advance-turn
-           #:add-log
-           #:initialize-game-state
-           #:deal-cards))
 
 (in-package :daifugo-game-engine)
 

@@ -9,10 +9,11 @@
 
 (load "../debug/final-test.lisp")
 
-(defpackage :daifugo-kakumei-test
-  (:use :common-lisp))
+(defpackage :daifugo-kakumei-integrated-test
+  (:use :common-lisp)
+  (:export #:run-kakumei-tests #:run-simple-kakumei-tests))
 
-(in-package :daifugo-kakumei-test)
+(in-package :daifugo-kakumei-integrated-test)
 
 ;;; ==========================================
 ;;; 革命ルール基本機能テスト
@@ -309,6 +310,86 @@
       (< elapsed-time 1.0))))  ; 1秒以内での完了を期待
 
 ;;; ==========================================
+;;; 簡易テスト関数（詳細バージョン）
+;;; ==========================================
+
+;; 簡易カード構造
+(defstruct simple-card rank suit)
+
+;; 簡易革命システム構造
+(defstruct simple-kakumei
+  active-p
+  count
+  last-type)
+
+;; 基本革命システム
+(defun create-simple-kakumei ()
+  "簡易革命システムを作成"
+  (make-simple-kakumei :active-p nil :count 0 :last-type nil))
+
+(defun trigger-simple-kakumei (kakumei-system type)
+  "簡易革命発動"
+  (incf (simple-kakumei-count kakumei-system))
+  (setf (simple-kakumei-active-p kakumei-system)
+        (oddp (simple-kakumei-count kakumei-system)))
+  (setf (simple-kakumei-last-type kakumei-system) type)
+  t)
+
+(defun simple-four-of-kind-p (cards)
+  "4枚同数字判定"
+  (when (= (length cards) 4)
+    (let ((first-rank (simple-card-rank (first cards))))
+      (every (lambda (card) (= (simple-card-rank card) first-rank)) cards))))
+
+(defun simple-same-suit-p (cards)
+  "同スート4枚判定"
+  (when (= (length cards) 4)
+    (let ((first-suit (simple-card-suit (first cards))))
+      (every (lambda (card) (eq (simple-card-suit card) first-suit)) cards))))
+
+;; 簡易テスト関数群（詳細バージョン）
+(defun test-simple-kakumei-creation-detailed ()
+  "革命システム作成テスト（詳細）"
+  (let ((kakumei (create-simple-kakumei)))
+    (and kakumei
+         (simple-kakumei-p kakumei)
+         (not (simple-kakumei-active-p kakumei))
+         (= (simple-kakumei-count kakumei) 0))))
+
+(defun test-simple-kakumei-trigger-detailed ()
+  "革命発動テスト（詳細）"
+  (let ((kakumei (create-simple-kakumei)))
+    (and (not (simple-kakumei-active-p kakumei))
+         (trigger-simple-kakumei kakumei :four-of-a-kind)
+         (simple-kakumei-active-p kakumei)
+         (= (simple-kakumei-count kakumei) 1))))
+
+(defun test-simple-double-kakumei-detailed ()
+  "二重革命テスト（詳細）"
+  (let ((kakumei (create-simple-kakumei)))
+    (trigger-simple-kakumei kakumei :four-of-a-kind)  ; 1回目
+    (and (simple-kakumei-active-p kakumei)
+         (trigger-simple-kakumei kakumei :same-suit)   ; 2回目
+         (not (simple-kakumei-active-p kakumei))       ; 打ち消し
+         (= (simple-kakumei-count kakumei) 2))))
+
+(defun test-simple-four-of-kind-detailed ()
+  "4枚同数字テスト（詳細）"
+  (let ((four-sevens (list (make-simple-card :rank 7 :suit :spades)
+                          (make-simple-card :rank 7 :suit :hearts)
+                          (make-simple-card :rank 7 :suit :diamonds)
+                          (make-simple-card :rank 7 :suit :clubs))))
+    (simple-four-of-kind-p four-sevens)))
+
+(defun test-simple-same-suit-detailed ()
+  "同スートテスト（詳細）"
+  (let ((all-spades (list (make-simple-card :rank 3 :suit :spades)
+                         (make-simple-card :rank 7 :suit :spades)
+                         (make-simple-card :rank 10 :suit :spades)
+                         (make-simple-card :rank 13 :suit :spades))))
+    (simple-same-suit-p all-spades)))
+
+;;; ==========================================
 ;;; テスト実行関数
 ;;; ==========================================
 
@@ -360,6 +441,34 @@
     (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
     (= failed 0)))
 
+(defun run-simple-kakumei-tests ()
+  "簡易革命テスト実行"
+  (format t "~%=== 簡易革命ルールテスト実行 ===~%")
+  
+  (let ((tests '(("革命システム作成（詳細）" . test-simple-kakumei-creation-detailed)
+                 ("革命発動（詳細）" . test-simple-kakumei-trigger-detailed)
+                 ("二重革命（詳細）" . test-simple-double-kakumei-detailed)
+                 ("4枚同数字判定（詳細）" . test-simple-four-of-kind-detailed)
+                 ("同スート判定（詳細）" . test-simple-same-suit-detailed)))
+        (passed 0)
+        (failed 0))
+    
+    (dolist (test tests)
+      (let ((test-name (car test))
+            (test-func (cdr test)))
+        (format t "テスト: ~A ... " test-name)
+        (if (funcall test-func)
+            (progn
+              (format t "合格~%")
+              (incf passed))
+            (progn
+              (format t "失敗~%")
+              (incf failed)))))
+    
+    (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
+    (= failed 0)))
+
 ;; テスト実行
 (format t "~%革命ルール（kakumei.lisp）のテストケース準備完了~%")
-(format t "実装完了後に (run-kakumei-tests) を実行してください~%")
+(format t "詳細テスト: (daifugo-kakumei-integrated-test:run-kakumei-tests)~%")
+(format t "簡易テスト: (daifugo-kakumei-integrated-test:run-simple-kakumei-tests)~%")
