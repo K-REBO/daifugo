@@ -90,3 +90,18 @@
                                        :logs nil)
   (add-log game-state "ゲーム状態を初期化しました"))
 
+;;; ルールセット管理
+(defun set-rule-set (game-state rule-set)
+  "ゲーム状態にルールセットを設定"
+  (daifugo-game-state:update-game-state game-state :rules rule-set)
+  rule-set)
+
+(defun get-rule-set (game-state)
+  "ゲーム状態からルールセットを取得"
+  (daifugo-game-state:game-state-rules game-state))
+
+;;; エイリアス関数（テスト互換性のため）
+(defun create-game-state (players)
+  "ゲーム状態を作成（create-initial-game-stateのエイリアス）"
+  (daifugo-game-state:create-initial-game-state players))
+

@@ -68,10 +68,10 @@
 ;;; ============================================================================
 
 (defun create-11back-system ()
-  \"新しい11バックシステムインスタンスを作成
+  "新しい11バックシステムインスタンスを作成
    
    戻り値:
-     新しく作成された11バックシステムオブジェクト\"
+     新しく作成された11バックシステムオブジェクト"
   (make-11back-system :enabled-p t
                       :trigger-count 0
                       :active-p nil
@@ -83,23 +83,23 @@
                       :statistics (make-hash-table :test 'equal)))
 
 (defun is-11back-enabled-p (back11-system)
-  \"11バックシステムが有効かどうかを確認
+  "11バックシステムが有効かどうかを確認
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     有効状態（真偽値）\"
+     有効状態（真偽値）"
   (11back-system-enabled-p back11-system))
 
 (defun get-11back-settings (back11-system)
-  \"11バックシステム設定を取得
+  "11バックシステム設定を取得
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     設定ハッシュテーブル\"
+     設定ハッシュテーブル"
   (11back-system-settings back11-system))
 
 ;;; ============================================================================
@@ -107,14 +107,14 @@
 ;;; ============================================================================
 
 (defun detect-11back-trigger (back11-system cards)
-  \"11バックトリガーを検出
+  "11バックトリガーを検出
    
    引数:
      back11-system - 11バックシステムオブジェクト
      cards - カードリスト
    
    戻り値:
-     11バック検出結果（真偽値）\"
+     11バック検出結果（真偽値）"
   (when (and (is-11back-enabled-p back11-system)
              cards
              (listp cards))
@@ -124,14 +124,14 @@
            cards)))
 
 (defun is-valid-11back-play-p (back11-system cards)
-  \"有効な11バックプレイかどうかを判定
+  "有効な11バックプレイかどうかを判定
    
    引数:
      back11-system - 11バックシステムオブジェクト
      cards - カードリスト
    
    戻り値:
-     有効性判定（真偽値）\"
+     有効性判定（真偽値）"
   (when (detect-11back-trigger back11-system cards)
     (let ((card-count (length cards)))
       (and (>= card-count 1)
@@ -146,13 +146,13 @@
                t)))))
 
 (defun get-11back-type (cards)
-  \"11バックタイプを取得
+  "11バックタイプを取得
    
    引数:
      cards - カードリスト
    
    戻り値:
-     11バックタイプ（:jack-single, :jack-pair, :jack-triple, :jack-quad）\"
+     11バックタイプ（:jack-single, :jack-pair, :jack-triple, :jack-quad）"
   (when (and cards (listp cards))
     (case (length cards)
       (1 :jack-single)
@@ -162,14 +162,14 @@
       (otherwise nil))))
 
 (defun trigger-11back (back11-system trigger-type)
-  \"11バックを発動
+  "11バックを発動
    
    引数:
      back11-system - 11バックシステムオブジェクト
      trigger-type - 発動タイプ
    
    戻り値:
-     発動成功フラグ\"
+     発動成功フラグ"
   (when (and (is-11back-enabled-p back11-system) trigger-type)
     ;; 発動回数増加
     (incf (11back-system-trigger-count back11-system))
@@ -186,13 +186,13 @@
     t))
 
 (defun is-11back-active-p (back11-system)
-  \"11バックが現在有効かどうかを確認
+  "11バックが現在有効かどうかを確認
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     有効状態（真偽値）\"
+     有効状態（真偽値）"
   (11back-system-active-p back11-system))
 
 ;;; ============================================================================
@@ -200,7 +200,7 @@
 ;;; ============================================================================
 
 (defun compare-card-strength (back11-system card1 card2)
-  \"カード強度を比較（11バック考慮）
+  "カード強度を比較（11バック考慮）
    
    引数:
      back11-system - 11バックシステムオブジェクト
@@ -208,7 +208,7 @@
      card2 - 比較カード2
    
    戻り値:
-     比較結果（:stronger, :weaker, :equal）\"
+     比較結果（:stronger, :weaker, :equal）"
   (let ((rank1 (daifugo-card-system:get-card-rank card1))
         (rank2 (daifugo-card-system:get-card-rank card2)))
     (let ((base-comparison (compare-base-strength rank1 rank2)))
@@ -219,13 +219,13 @@
           base-comparison))))
 
 (defun get-card-strength-order (back11-system)
-  \"カード強度順序を取得
+  "カード強度順序を取得
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     強度順序リスト\"
+     強度順序リスト"
   (let ((normal-order '(3 4 5 6 7 8 9 10 11 12 13 1 2)))
     (if (is-11back-active-p back11-system)
         ;; 11バック有効時は逆順
@@ -234,24 +234,24 @@
         normal-order)))
 
 (defun is-strength-reversed-p (back11-system)
-  \"強度が逆転しているかどうかを確認
+  "強度が逆転しているかどうかを確認
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     逆転状態（真偽値）\"
+     逆転状態（真偽値）"
   (is-11back-active-p back11-system))
 
 (defun apply-strength-reversal (back11-system card-list)
-  \"強度逆転を適用してカードリストをソート
+  "強度逆転を適用してカードリストをソート
    
    引数:
      back11-system - 11バックシステムオブジェクト
      card-list - カードリスト
    
    戻り値:
-     ソートされたカードリスト\"
+     ソートされたカードリスト"
   (let ((strength-order (get-card-strength-order back11-system)))
     (sort (copy-list card-list)
           (lambda (card1 card2)
@@ -265,14 +265,14 @@
 ;;; ============================================================================
 
 (defun integrate-with-game (back11-system game-state)
-  \"ゲーム状態と統合
+  "ゲーム状態と統合
    
    引数:
      back11-system - 11バックシステムオブジェクト
      game-state - ゲーム状態
    
    戻り値:
-     統合成功フラグ\"
+     統合成功フラグ"
   (when (and back11-system game-state)
     ;; 統合状態設定
     (setf (gethash :integrated-p (11back-system-integration-status back11-system)) t)
@@ -286,39 +286,39 @@
     t))
 
 (defun is-integrated-with-game-p (back11-system game-state)
-  \"ゲーム状態と統合されているかを確認
+  "ゲーム状態と統合されているかを確認
    
    引数:
      back11-system - 11バックシステムオブジェクト
      game-state - ゲーム状態
    
    戻り値:
-     統合確認（真偽値）\"
+     統合確認（真偽値）"
   (and (gethash :integrated-p (11back-system-integration-status back11-system))
        (eq (gethash :game-state (11back-system-integration-status back11-system))
            game-state)))
 
 (defun can-trigger-in-game-p (back11-system game-state)
-  \"ゲーム内で11バックを発動可能かを確認
+  "ゲーム内で11バックを発動可能かを確認
    
    引数:
      back11-system - 11バックシステムオブジェクト
      game-state - ゲーム状態
    
    戻り値:
-     発動可能性（真偽値）\"
+     発動可能性（真偽値）"
   (and (is-11back-enabled-p back11-system)
        (is-integrated-with-game-p back11-system game-state)
        (daifugo-game-engine:is-game-active-p game-state)))
 
 (defun get-game-integration-status (back11-system)
-  \"ゲーム統合状態を取得
+  "ゲーム統合状態を取得
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     統合状態情報\"
+     統合状態情報"
   (11back-system-integration-status back11-system))
 
 ;;; ============================================================================
@@ -326,49 +326,49 @@
 ;;; ============================================================================
 
 (defun enable-history-tracking (back11-system)
-  \"履歴追跡を有効化
+  "履歴追跡を有効化
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     有効化成功フラグ\"
+     有効化成功フラグ"
   (setf (11back-system-history-enabled-p back11-system) t)
   (unless (11back-system-trigger-history back11-system)
     (setf (11back-system-trigger-history back11-system) nil))
   t)
 
 (defun get-11back-history (back11-system)
-  \"11バック履歴を取得
+  "11バック履歴を取得
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     履歴リスト\"
+     履歴リスト"
   (11back-system-trigger-history back11-system))
 
 (defun get-trigger-count-by-type (history trigger-type)
-  \"タイプ別発動回数を取得
+  "タイプ別発動回数を取得
    
    引数:
      history - 履歴リスト
      trigger-type - 発動タイプ
    
    戻り値:
-     発動回数\"
+     発動回数"
   (count-if (lambda (record)
               (eq (11back-trigger-record-trigger-type record) trigger-type))
             history))
 
 (defun get-total-trigger-count (back11-system)
-  \"総発動回数を取得
+  "総発動回数を取得
    
    引数:
      back11-system - 11バックシステムオブジェクト
    
    戻り値:
-     総発動回数\"
+     総発動回数"
   (11back-system-trigger-count back11-system))
 
 ;;; ============================================================================
@@ -376,13 +376,13 @@
 ;;; ============================================================================
 
 (defun is-valid-jack-combination (cards)
-  \"有効なジャック組み合わせかどうかを判定
+  "有効なジャック組み合わせかどうかを判定
    
    引数:
      cards - カードリスト
    
    戻り値:
-     有効性判定（真偽値）\"
+     有効性判定（真偽値）"
   (let ((card-count (length cards)))
     (and (> card-count 1)
          (<= card-count 4)
@@ -396,14 +396,14 @@
             card-count))))
 
 (defun compare-base-strength (rank1 rank2)
-  \"基本的なカード強度比較
+  "基本的なカード強度比較
    
    引数:
      rank1 - ランク1
      rank2 - ランク2
    
    戻り値:
-     比較結果（:stronger, :weaker, :equal）\"
+     比較結果（:stronger, :weaker, :equal）"
   (let ((order '(3 4 5 6 7 8 9 10 11 12 13 1 2)))
     (let ((pos1 (position rank1 order))
           (pos2 (position rank2 order)))
@@ -412,13 +412,13 @@
             (t :equal)))))
 
 (defun reverse-strength-comparison (comparison)
-  \"強度比較結果を逆転
+  "強度比較結果を逆転
    
    引数:
      comparison - 比較結果
    
    戻り値:
-     逆転した比較結果\"
+     逆転した比較結果"
   (case comparison
     (:stronger :weaker)
     (:weaker :stronger)
@@ -426,14 +426,14 @@
     (otherwise :equal)))
 
 (defun record-trigger-history (back11-system trigger-type)
-  \"発動履歴を記録
+  "発動履歴を記録
    
    引数:
      back11-system - 11バックシステムオブジェクト
      trigger-type - 発動タイプ
    
    戻り値:
-     記録成功フラグ\"
+     記録成功フラグ"
   (when (11back-system-history-enabled-p back11-system)
     (let ((record (make-11back-trigger-record 
                    :timestamp (get-universal-time)
@@ -445,14 +445,14 @@
       t)))
 
 (defun update-trigger-statistics (back11-system trigger-type)
-  \"発動統計を更新
+  "発動統計を更新
    
    引数:
      back11-system - 11バックシステムオブジェクト
      trigger-type - 発動タイプ
    
    戻り値:
-     更新成功フラグ\"
+     更新成功フラグ"
   (let ((stats (11back-system-statistics back11-system)))
     ;; タイプ別カウント更新
     (incf (gethash trigger-type stats 0))

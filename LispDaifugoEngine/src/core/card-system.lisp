@@ -122,3 +122,35 @@
 (defun compare-cards (card1 card2)
   "カード強度を比較する (card1 > card2 なら正値)"
   (- (card-strength card1) (card-strength card2)))
+
+;;; ジョーカー関連
+(defun joker-p (card)
+  "カードがジョーカーかどうかを判定"
+  (and (card-p card)
+       (eq (card-suit card) :joker)
+       (eq (card-rank card) 'JOKER)))
+
+(defun create-joker ()
+  "ジョーカーカードを作成"
+  (create-card 'JOKER :joker))
+
+(defun get-joker-value (card)
+  "ジョーカーの値を取得（通常は14）"
+  (if (joker-p card)
+      14
+      0))
+
+(defun set-joker-value (card value)
+  "ジョーカーの値を設定（実際はカードの強度を変更）"
+  (when (joker-p card)
+    (setf (card-strength card) value))
+  card)
+
+;;; カード情報取得関数（互換性のため）
+(defun get-card-rank (card)
+  "カードのランクを取得"
+  (card-rank card))
+
+(defun get-card-suit (card)
+  "カードのスートを取得"
+  (card-suit card))

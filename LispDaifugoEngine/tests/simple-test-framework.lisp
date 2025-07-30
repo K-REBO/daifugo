@@ -5,6 +5,8 @@
   (:use :common-lisp)
   (:export #:test-assert
            #:test
+           #:test-function-exists
+           #:test-section
            #:run-test-suite
            #:*tests-passed*
            #:*tests-total*))
@@ -31,6 +33,19 @@
            (incf *tests-passed*)
            (format t "✅ ~A~%" ,description))
          (format t "❌ ~A~%" ,description))))
+
+(defun test-function-exists (function-symbol description)
+  "関数の存在をテストする"
+  (incf *tests-total*)
+  (if (and (fboundp function-symbol) (functionp (symbol-function function-symbol)))
+      (progn
+        (incf *tests-passed*)
+        (format t "✅ ~A~%" description))
+      (format t "❌ ~A~%" description)))
+
+(defun test-section (section-name)
+  "テストセクションのヘッダーを表示"
+  (format t "~%--- ~A ---~%" section-name))
 
 ;;; テストスイート実行関数
 (defun run-test-suite (suite-name test-functions)

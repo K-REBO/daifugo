@@ -24,7 +24,11 @@
            #:valid-rank-p
            #:valid-suit-p
            #:joker-p
-           #:get-joker-value))
+           #:create-joker
+           #:get-joker-value
+           #:set-joker-value
+           #:get-card-rank
+           #:get-card-suit))
 
 (defpackage :daifugo-player-system
   (:use :common-lisp :daifugo-card-system)
@@ -111,7 +115,10 @@
            #:game-state-current-player
            #:game-state-game-phase
            #:game-state-turn-direction
-           #:add-log))
+           #:add-log
+           #:set-rule-set
+           #:get-rule-set
+           #:create-game-state))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
@@ -267,8 +274,21 @@
   (:use :common-lisp :daifugo-rule-engine)
   (:export #:create-11back-system
            #:11back-system-p
+           #:is-11back-enabled-p
            #:apply-11back-rule
            #:is-11back-applicable-p))
+
+(defpackage :daifugo-kaidan
+  (:use :common-lisp :daifugo-rule-engine)
+  (:export #:create-kaidan-system
+           #:kaidan-system-p
+           #:is-kaidan-enabled-p
+           #:is-valid-kaidan-p
+           #:get-min-kaidan-length
+           #:detect-kaidan-pattern
+           #:get-kaidan-length
+           #:get-kaidan-min-rank
+           #:get-kaidan-max-rank))
 
 (defpackage :daifugo-rule-set
   (:use :common-lisp :daifugo-rule-engine)
