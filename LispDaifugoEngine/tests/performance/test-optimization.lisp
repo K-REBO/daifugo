@@ -40,7 +40,10 @@
     
     (gc) ; ガベージコレクション実行
     (setf (performance-metric-memory-before metric) 
-          (sb-kernel:get-bytes-consed))
+          (handler-case
+              #+sbcl (sb-ext:get-bytes-consed)
+              #-sbcl 0
+            (error () 0)))
     
     (let ((start-time (get-universal-time)))
       (dotimes (i iterations)
@@ -65,7 +68,10 @@
                 0)))
     
     (setf (performance-metric-memory-after metric) 
-          (sb-kernel:get-bytes-consed))
+          (handler-case
+              #+sbcl (sb-ext:get-bytes-consed)
+              #-sbcl 0
+            (error () 0)))
     
     metric))
 

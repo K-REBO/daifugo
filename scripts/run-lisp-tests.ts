@@ -178,8 +178,8 @@ class LispTestRunner {
         name: "ゲームロガーテスト",
         script: this.createTestScript([
           '(load "src/testing/game-logger.lisp")',
-          '(load "tests/core/test-game-logger.lisp")',
-          '(daifugo-game-logger-test:run-game-logger-tests)'
+          '(load "tests/core/test-game-logger-fixed.lisp")',
+          '(test-game-logger-fixed:run-game-logger-fixed-tests)'
         ])
       },
 

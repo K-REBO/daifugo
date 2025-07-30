@@ -125,6 +125,14 @@
         (format t "  ✅ Rule engine loaded~%")
         (load "src/events/event-system.lisp")
         (format t "  ✅ Event system loaded~%")
+        (load "src/rules/rule-set.lisp")
+        (format t "  ✅ Rule set loaded~%")
+        (load "src/rules/kakumei.lisp")
+        (format t "  ✅ Kakumei rules loaded~%")
+        (load "src/rules/8kiri.lisp")
+        (format t "  ✅ 8kiri rules loaded~%")
+        (load "src/rules/11back.lisp")
+        (format t "  ✅ 11back rules loaded~%")
         (load "src/testing/auto-tester.lisp")
         (format t "  ✅ Auto-tester loaded~%"))
     (error (e)
@@ -187,6 +195,14 @@
         (format t "  ✅ Rule engine loaded~%")
         (load "src/events/event-system.lisp")
         (format t "  ✅ Event system loaded~%")
+        (load "src/rules/rule-set.lisp")
+        (format t "  ✅ Rule set loaded~%")
+        (load "src/rules/kakumei.lisp")
+        (format t "  ✅ Kakumei rules loaded~%")
+        (load "src/rules/8kiri.lisp")
+        (format t "  ✅ 8kiri rules loaded~%")
+        (load "src/rules/11back.lisp")
+        (format t "  ✅ 11back rules loaded~%")
         (load "src/testing/auto-tester.lisp")
         (format t "  ✅ Auto-tester loaded~%"))
     (error (e)
@@ -212,11 +228,46 @@
   (generate-tests-from-directory "tests/performance/" 'performance-tests)
 
   (format t "~%📊 === 全テスト実行 ===~%")
-  (let ((success-p (run! 'all-tests)))
+  (let* ((test-results (run 'all-tests))
+         (success-p (explain! test-results)))
+    
+    ;; FiveAM結果から統計を取得
+    (format t "~%📊 === 詳細テスト結果サマリー ===~%")
+    (handler-case
+        (let* ((num-passed (count-if (lambda (result) 
+                                       (string= (string (type-of result)) "TEST-PASSED")) test-results))
+               (num-failed (count-if (lambda (result) 
+                                       (or (string= (string (type-of result)) "TEST-FAILURE")
+                                           (string= (string (type-of result)) "UNEXPECTED-TEST-FAILURE"))) test-results))
+               (num-skipped (count-if (lambda (result) 
+                                        (string= (string (type-of result)) "TEST-SKIPPED")) test-results))
+               (total-tests (+ num-passed num-failed num-skipped))
+               (file-count (length (uiop:directory-files "tests/" "*.lisp"))))
+          
+          (format t "✅ 成功: ~D~%" num-passed)
+          (format t "❌ 失敗: ~D~%" num-failed)  
+          (format t "⏭️  スキップ: ~D~%" num-skipped)
+          (format t "📋 合計テスト: ~D~%" total-tests)
+          (format t "📁 テストファイル数: ~D~%" file-count)
+          
+          (when (> num-passed 0)
+            (format t "~%🎯 成功率: ~,1F%~%" 
+                    (* 100.0 (/ num-passed total-tests))))
+          
+          (when (> num-failed 0)
+            (format t "⚠️  実装が必要なテスト: ~D個~%" num-failed)))
+      (error (e)
+        (format t "統計計算エラー: ~A~%" e)
+        (format t "結果オブジェクトの詳細:~%")
+        (dolist (result (subseq test-results 0 (min 3 (length test-results))))
+          (format t "  ~A: ~A~%" (type-of result) result))))
+    
     (if success-p
         (progn
+          (format t "🎉 すべてのテストが成功またはスキップされました！~%")
           (format t "✅ === 全テスト成功 ===~%")
           (uiop:quit 0))
         (progn
+          (format t "⚠️  一部のテストが失敗しました。詳細は上記のログを確認してください。~%")
           (format t "❌ === テスト失敗 ===~%")
           (uiop:quit 1)))))

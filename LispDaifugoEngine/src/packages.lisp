@@ -22,7 +22,9 @@
            #:deal-cards
            #:compare-cards
            #:valid-rank-p
-           #:valid-suit-p))
+           #:valid-suit-p
+           #:joker-p
+           #:get-joker-value))
 
 (defpackage :daifugo-player-system
   (:use :common-lisp :daifugo-card-system)
@@ -245,19 +247,40 @@
   (:use :common-lisp :daifugo-rule-engine))
 
 (defpackage :daifugo-8kiri
-  (:use :common-lisp :daifugo-rule-engine))
+  (:use :common-lisp :daifugo-rule-engine)
+  (:export #:create-8kiri-system
+           #:8kiri-system-p
+           #:apply-8kiri-rule
+           #:is-8kiri-applicable-p))
 
 (defpackage :daifugo-kakumei
-  (:use :common-lisp :daifugo-rule-engine))
+  (:use :common-lisp :daifugo-rule-engine)
+  (:export #:create-kakumei-system
+           #:kakumei-system-p
+           #:trigger-kakumei
+           #:is-kakumei-active-p))
 
 (defpackage :daifugo-rules
   (:use :common-lisp :daifugo-rule-engine))
 
 (defpackage :daifugo-11back
-  (:use :common-lisp :daifugo-rule-engine))
+  (:use :common-lisp :daifugo-rule-engine)
+  (:export #:create-11back-system
+           #:11back-system-p
+           #:apply-11back-rule
+           #:is-11back-applicable-p))
 
-(defpackage :daifugo-ai-players
-  (:use :common-lisp :daifugo-player-system))
+(defpackage :daifugo-rule-set
+  (:use :common-lisp :daifugo-rule-engine)
+  (:export #:rule-set
+           #:make-rule-set
+           #:create-rule-set
+           #:rule-set-p
+           #:rule-set-name
+           #:rule-set-rules
+           #:get-default-rule-set
+           #:register-rule-set
+           #:get-rule-set))
 
 ;;; ---------------------------------------------------------------------------
 ;;; API
