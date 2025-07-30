@@ -119,7 +119,7 @@
 
 (defun player-has-cards-p (game-state player-id cards)
   "プレイヤーが指定されたカードを持っているかチェック"
-  (let ((players (slot-value game-state 'daifugo-game-engine::players)))
+  (let ((players (daifugo-game-state:game-state-players game-state)))
     (let ((player (nth player-id players)))
       (when player
         (let ((hand (daifugo-player-system:player-hand player)))
@@ -127,7 +127,7 @@
 
 (defun can-play-cards-p (game-state cards)
   "カードをプレイできるかチェック（フィールドとの比較）" 
-  (let ((field-cards (slot-value game-state 'daifugo-game-engine::field)))
+  (let ((field-cards (daifugo-game-state:game-state-field game-state)))
     (if field-cards
         ;; フィールドにカードがある場合：より強いカードのみプレイ可能
         (and (hands-compatible-p cards field-cards)
@@ -137,7 +137,7 @@
 
 (defun remove-cards-from-player (game-state player-id cards)
   "プレイヤーの手札からカードを削除"
-  (let ((players (slot-value game-state 'daifugo-game-engine::players)))
+  (let ((players (daifugo-game-state:game-state-players game-state)))
     (let ((player (nth player-id players)))
       (when player
         (dolist (card cards)
@@ -145,11 +145,23 @@
 
 (defun set-field-cards (game-state cards)
   "フィールドにカードを設定"
-  (setf (slot-value game-state 'daifugo-game-engine::field) cards))
+  (daifugo-game-state:update-game-state game-state :field cards))
 
-(defun advance-turn (game-state)
-  "ターンを進める"
-  (let ((current (slot-value game-state 'daifugo-game-engine::current-player))
-        (players (slot-value game-state 'daifugo-game-engine::players)))
-    (setf (slot-value game-state 'daifugo-game-engine::current-player)
-          (mod (1+ current) (length players)))))
+(defun process-pass (game-state player-id)
+  "プレイヤーのパス処理
+   
+   引数:
+     game-state - ゲーム状態
+     player-id - プレイヤーID
+   
+   戻り値:
+     パス処理成功フラグ"
+  ;; パスログを追加
+  (daifugo-game-state:add-game-log game-state 
+                                   (list :action :pass 
+                                         :player player-id 
+                                         :timestamp (get-universal-time)))
+  ;; ターンを進める
+  (daifugo-game-state:advance-turn game-state)
+  t)
+

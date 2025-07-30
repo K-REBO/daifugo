@@ -37,12 +37,12 @@
 (defun create-players (player-count)
   "指定された数のプレイヤーを作成する"
   (loop for i from 0 below player-count
-        collect (create-player :id i
-                               :name (format nil "Player~A" i)
-                               :hand nil
-                               :rank :heimin
-                               :type :human
-                               :ai-type nil)))
+        collect (make-player :id i
+                             :name (format nil "Player~A" i)
+                             :hand nil
+                             :rank :heimin
+                             :type :human
+                             :ai-type nil)))
 
 ;;; プレイヤーのデフォルト値設定
 (defun create-player (&key id name (hand nil) (rank :heimin) (type :human) (ai-type nil))

@@ -7,47 +7,6 @@
 ;;; - 回帰テスト・ルール検証
 ;;; - テストレポート生成・出力機能
 
-(defpackage :daifugo-auto-tester
-  (:use :common-lisp)
-  (:export ;; === 基本自動テスタ機能 ===
-           #:create-auto-tester        ; 自動テスタ作成
-           #:auto-tester-p             ; 自動テスタ判定
-           #:tester-name               ; テスタ名取得
-           
-           ;; === ゲーム実行・シミュレーション ===
-           #:run-single-game           ; 単一ゲーム実行
-           #:run-bulk-tests            ; 一括テスト実行
-           #:run-ai-game               ; AIプレイヤーゲーム
-           #:run-configured-test       ; 設定済みテスト実行
-           #:run-parallel-tests        ; 並列テスト実行
-           
-           ;; === AI プレイヤー機能 ===
-           #:compare-ai-types          ; AI性能比較
-           #:set-ai-configuration      ; AI設定
-           
-           ;; === 統計・分析機能 ===
-           #:get-test-statistics       ; テスト統計取得
-           #:get-turn-distribution     ; ターン数分布
-           #:analyze-winner-patterns   ; 勝者パターン分析
-           
-           ;; === パフォーマンス・負荷テスト ===
-           #:run-performance-benchmark ; パフォーマンステスト
-           #:run-stress-test           ; ストレステスト
-           
-           ;; === 回帰・ルール検証 ===
-           #:validate-game-rules       ; ルール検証
-           #:establish-baseline        ; ベースライン確立
-           #:detect-regressions        ; 回帰検出
-           
-           ;; === レポート・出力機能 ===
-           #:generate-test-report      ; テストレポート生成
-           #:export-results-csv        ; CSV出力
-           
-           ;; === 設定・カスタマイズ ===
-           #:set-test-configuration    ; テスト設定
-           #:set-test-seed             ; シード設定
-           #:set-test-timeout))        ; タイムアウト設定
-
 (in-package :daifugo-auto-tester)
 
 ;;; ============================================================================
@@ -114,6 +73,16 @@
                     :baseline-data nil
                     :performance-metrics (make-hash-table :test 'equal)
                     :statistics-cache nil))
+
+(defun tester-name (tester)
+  "テスタ名を取得
+   
+   引数:
+     tester - 自動テスタオブジェクト
+   
+   戻り値:
+     テスタ名"
+  (auto-tester-name tester))
 
 ;;; ============================================================================
 ;;; ゲーム実行・シミュレーション機能
@@ -186,6 +155,7 @@
    
    戻り値:
      ゲーム結果（plist）"
+  (declare (ignore tester))
   (let ((player-count (length ai-types))
         (start-time (get-internal-real-time)))
     
@@ -227,6 +197,7 @@
    
    戻り値:
      テスト結果のリスト"
+  (declare (ignore tester))
   ;; 実際の並列実行の代わりに高速シミュレーション
   (let ((results nil))
     (dotimes (i game-count)
@@ -383,6 +354,7 @@
    
    戻り値:
      ルール検証結果のリスト"
+  (declare (ignore tester))
   (list (list :rule-name :basic-play
              :passed t
              :description "基本的なカード出しルール")
@@ -417,9 +389,9 @@
      回帰検出結果（plist）"
   (let ((baseline (auto-tester-baseline-data tester)))
     (when baseline
-      (let ((current-results (run-bulk-tests tester test-game-count 4)))
-        (list :baseline-compatible t
-              :deviation-score 0.05)))))  ; 5%の偏差
+      (run-bulk-tests tester test-game-count 4)  ; 結果は比較に使用予定
+      (list :baseline-compatible t
+            :deviation-score 0.05))))  ; 5%の偏差
 
 ;;; ============================================================================
 ;;; レポート・出力機能

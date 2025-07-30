@@ -177,11 +177,11 @@
 
 (defun log-game-state (logger game-state)
   "ゲーム状態をログに記録"
-  (let ((state-data (list :current-player (daifugo-game-engine:game-state-current-player game-state)
-                          :game-phase (daifugo-game-engine:game-state-game-phase game-state)
-                          :revolution-p (daifugo-game-engine:game-state-revolution-p game-state)
-                          :field-count (length (daifugo-game-engine:game-state-field game-state))
-                          :player-count (length (daifugo-game-engine:game-state-players game-state)))))
+  (let ((state-data (list :current-player (daifugo-game-state:game-state-current-player game-state)
+                          :game-phase (daifugo-game-state:game-state-game-phase game-state)
+                          :revolution-p (daifugo-game-state:game-state-revolution-p game-state)
+                          :field-count (length (daifugo-game-state:game-state-field game-state))
+                          :player-count (length (daifugo-game-state:game-state-players game-state)))))
     (log-info logger "ゲーム状態記録" state-data :game-state)))
 
 (defun log-player-action (logger player-id action data)
@@ -204,7 +204,7 @@
                              (list :player-id (daifugo-player-system:player-id player)
                                    :hand-count (daifugo-player-system:hand-count player)
                                    :rank (daifugo-player-system:player-rank player)))
-                           (daifugo-game-engine:game-state-players game-state))))
+                           (daifugo-game-state:game-state-players game-state))))
     (log-info logger "手札状態記録" hand-data :hand-state)))
 
 (defun log-turn-start (logger player-id)

@@ -2,16 +2,7 @@
 
 (in-package :daifugo-game-engine)
 
-;;; ゲーム状態の定義
-(defstruct game-state
-  players
-  current-player
-  field
-  deck
-  turn-direction
-  game-phase
-  revolution-p
-  logs)
+;; ゲーム状態構造体はdaifugo-game-stateパッケージで定義されています
 
 ;;; カード配布
 (defun deal-cards (players deck)
@@ -37,32 +28,25 @@
   (let ((deck (daifugo-card-system:create-deck))
         (players (daifugo-player-system:create-players player-count)))
     (deal-cards players deck)
-    (make-game-state
-     :players players
-     :current-player 0
-     :field nil
-     :deck deck
-     :turn-direction :clockwise
-     :game-phase :init
-     :revolution-p nil
-     :logs nil)))
+    (daifugo-game-state:create-initial-game-state players)))
 
 ;;; ゲーム開始
 (defun start-game (game-state)
   "ゲームを開始する"
-  (unless (eql (game-state-game-phase game-state) :init)
-    (error "ゲームは既に開始されています: ~A" (game-state-game-phase game-state)))
-  (setf (game-state-game-phase game-state) :playing)
-  (push (format nil "ゲーム開始 - プレイヤー数: ~A" (length (game-state-players game-state)))
-        (game-state-logs game-state))
+  (unless (eql (daifugo-game-state:game-state-game-phase game-state) :init)
+    (error "ゲームは既に開始されています: ~A" (daifugo-game-state:game-state-game-phase game-state)))
+  (daifugo-game-state:set-game-phase game-state :playing)
+  (daifugo-game-state:add-game-log game-state 
+    (format nil "ゲーム開始 - プレイヤー数: ~A" 
+            (length (daifugo-game-state:game-state-players game-state))))
   game-state)
 
 ;;; カードプレイ
 (defun play-card (game-state player-id cards)
   "プレイヤーがカードを出す"
-  (unless (eql (game-state-game-phase game-state) :playing)
+  (unless (eql (daifugo-game-state:game-state-game-phase game-state) :playing)
     (error "ゲームが開始されていません"))
-  (unless (= player-id (game-state-current-player game-state))
+  (unless (= player-id (daifugo-game-state:game-state-current-player game-state))
     (error "現在のプレイヤーではありません: ~A" player-id))
   
   ;; ゲームロジックを使用してカード出しを処理
@@ -72,9 +56,9 @@
 ;;; パス
 (defun pass-turn (game-state player-id)
   "プレイヤーがパスする"
-  (unless (eql (game-state-game-phase game-state) :playing)
+  (unless (eql (daifugo-game-state:game-state-game-phase game-state) :playing)
     (error "ゲームが開始されていません"))
-  (unless (= player-id (game-state-current-player game-state))
+  (unless (= player-id (daifugo-game-state:game-state-current-player game-state))
     (error "現在のプレイヤーではありません: ~A" player-id))
   
   ;; ゲームロジックを使用してパスを処理
@@ -84,38 +68,25 @@
 ;;; 現在のプレイヤー取得
 (defun get-current-player (game-state)
   "現在のプレイヤーを取得する"
-  (game-state-current-player game-state))
+  (daifugo-game-state:get-current-player game-state))
 
-;;; 次のプレイヤーに進む
-(defun advance-turn (game-state)
-  "次のプレイヤーにターンを進める"
-  (let ((player-count (length (game-state-players game-state)))
-        (current (game-state-current-player game-state))
-        (direction (game-state-turn-direction game-state)))
-    (setf (game-state-current-player game-state)
-          (if (eql direction :clockwise)
-              (mod (1+ current) player-count)
-              (mod (1- current) player-count)))))
+;;; ゲーム終了判定
+(defun game-over-p (game-state)
+  "ゲーム終了判定"
+  (daifugo-game-state:is-game-over-p game-state))
+
 
 ;;; ログ追加
 (defun add-log (game-state message)
   "ゲームログにメッセージを追加する"
-  (push message (game-state-logs game-state)))
+  (daifugo-game-state:add-game-log game-state message))
 
 ;;; ゲーム状態の初期化
 (defun initialize-game-state (game-state)
   "ゲーム状態を初期化する"
-  (setf (game-state-field game-state) nil
-        (game-state-revolution-p game-state) nil
-        (game-state-logs game-state) nil)
+  (daifugo-game-state:update-game-state game-state 
+                                       :field nil
+                                       :revolution-p nil
+                                       :logs nil)
   (add-log game-state "ゲーム状態を初期化しました"))
 
-;;; ゲーム終了判定
-(defun game-over-p (game-state)
-  "ゲームが終了したかどうかを判定する"
-  (unless (eql (game-state-game-phase game-state) :playing)
-    (return-from game-over-p nil))
-  ;; 手札が空のプレイヤーがいるかチェック
-  (some (lambda (player)
-          (daifugo-player-system:hand-empty-p player))
-        (game-state-players game-state)))

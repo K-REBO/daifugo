@@ -1,19 +1,5 @@
 ;;; rule-engine.lisp - ルール処理エンジン
 
-(defpackage :daifugo-rule-engine
-  (:use :common-lisp)
-  (:export #:rule
-           #:make-rule
-           #:rule-name
-           #:rule-trigger
-           #:rule-effect
-           #:rule-description
-           #:register-rule
-           #:unregister-rule
-           #:get-active-rules
-           #:apply-rules
-           #:validate-play))
-
 (in-package :daifugo-rule-engine)
 
 ;;; ルール構造体
@@ -57,3 +43,24 @@
   ;; 基本的な検証ロジック
   ;; 実装は後で追加
   t)
+
+;;; ルール取得
+(defun get-rule (rule-name)
+  "ルール名でルールを取得する"
+  (find rule-name *active-rules* :key #'rule-name))
+
+;;; ルール定義マクロ
+(defmacro define-rule (name description trigger-form effect-form &optional (priority 0))
+  "ルールを定義して登録するマクロ"
+  `(progn
+     (let ((rule (make-rule :name ',name
+                           :description ,description
+                           :trigger (lambda (game-state context)
+                                     (declare (ignorable game-state context))
+                                     ,trigger-form)
+                           :effect (lambda (game-state context)
+                                    (declare (ignorable game-state context))
+                                    ,effect-form)
+                           :priority ,priority)))
+       (register-rule rule)
+       rule)))

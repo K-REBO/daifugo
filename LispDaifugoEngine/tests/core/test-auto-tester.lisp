@@ -1,7 +1,5 @@
 ;;; test-auto-tester.lisp - 自動テスタシステムの包括的テスト
 
-(load "../debug/final-test.lisp")
-
 (defpackage :daifugo-auto-tester-test
   (:use :common-lisp))
 
@@ -269,7 +267,7 @@
             (incf failed)))))
     
     (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
-    (= failed 0)))
+    (zerop failed)))
 
 ;; ユーティリティ関数（簡易実装）
 (defun split-string (string delimiter)
