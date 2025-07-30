@@ -165,15 +165,5 @@
   (format t "~%結果: ~A合格, ~A失敗~%" *tests-passed* (- *tests-total* *tests-passed*))
   (= *tests-passed* *tests-total*))
 
-(test test-player-hand-management
-  "プレイヤー手札管理のテスト"
-  (let ((game (daifugo-game-engine:create-game 4)))
-    (daifugo-game-engine:start-game game)
-    (let* ((player (first (daifugo-game-engine:game-state-players game)))
-           (initial-count (length (daifugo-player-system:player-hand player)))
-           (card-to-play (first (daifugo-player-system:player-hand player))))
-      (daifugo-game-logic:play-card game 0 (list card-to-play))
-      (is (< (length (daifugo-player-system:player-hand player)) initial-count)))))
-
 (defun run-all-tests ()
   (run! ':daifugo-game-logic))

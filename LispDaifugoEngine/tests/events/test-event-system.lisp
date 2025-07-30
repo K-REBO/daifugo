@@ -9,7 +9,7 @@
 ;;; - イベントバス・ブロードキャスト
 ;;; - イベント統計・分析
 
-;; 注記: final-test.lisp の依存関係を削除（2025-01-30）
+(load "../debug/final-test.lisp")
 
 (defpackage :daifugo-event-system-integrated-test
   (:use :common-lisp)
