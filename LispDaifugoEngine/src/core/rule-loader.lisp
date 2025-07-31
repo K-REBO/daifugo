@@ -67,3 +67,9 @@
   (if (member rule-name (rule-loader-loaded-rules loader) :test #'string=)
       :loaded
       :not-loaded))
+
+(defun validate-rule-file (loader file-path)
+  "ルールファイルの妥当性を検証"
+  (declare (ignore loader))
+  (and (probe-file file-path)
+       (string= (pathname-type file-path) "lisp")))

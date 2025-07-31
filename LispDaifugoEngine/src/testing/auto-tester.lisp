@@ -52,6 +52,11 @@
 ;;; 基本自動テスタ機能
 ;;; ============================================================================
 
+(defun add-test-case (tester test-case)
+  "テストケースを追加"
+  (push test-case (auto-tester-results tester))
+  test-case)
+
 (defun create-auto-tester (name)
   "新しい自動テスタインスタンスを作成
    

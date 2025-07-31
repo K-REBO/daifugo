@@ -55,12 +55,12 @@
   (test-section "カードシステムコア (Card System Core)")
   (test-assert (find-package :daifugo-card-system) "カードシステムパッケージが存在する")
   (test-function-exists 'daifugo-card-system:create-deck "デッキ作成関数 create-deck が存在する")
-  (test-function-exists 'daifugo-card-system:make-card "カード作成関数 make-card が存在する"))
+  (test-function-exists 'daifugo-card-system:create-card "カード作成関数 create-card が存在する"))
 
 (defun test-card-properties-validation ()
   "カード属性検証テスト"
   (test-section "カード属性 (Card Properties)")
-  (let ((card (daifugo-card-system:make-card :rank 7 :suit :spades)))
+  (let ((card (daifugo-card-system:create-card  7 :spades)))
     (test-assert (not (null card)) "カードが作成される")
     (test-assert (eq (daifugo-card-system:card-rank card) 7) "カードランクが7である")
     (test-assert (eq (daifugo-card-system:card-suit card) :spades) "カードスートが :spades である")))
@@ -78,8 +78,8 @@
 (defun test-single-card-logic ()
   "単枚出しのロジックをテスト"
   (test-section "単枚出し (Single Card)")
-  (let ((c3 (daifugo-card-system:make-card :rank 3 :suit :spades))
-        (c5 (daifugo-card-system:make-card :rank 5 :suit :hearts)))
+  (let ((c3 (daifugo-card-system:create-card  3 :spades))
+        (c5 (daifugo-card-system:create-card  5 :hearts)))
     (test-assert (daifugo-game-logic:is-valid-hand (list c3)) "単枚出しは有効")
     (test-assert (not (daifugo-game-logic:is-valid-hand (list c3 c5))) "異なるカード2枚は無効")
     (test-assert (eq :single (daifugo-game-logic:get-hand-type (list c3))) "手札タイプが :single として検出される")
@@ -88,9 +88,9 @@
 (defun test-pair-logic ()
   "ペア出しのロジックをテスト"
   (test-section "ペア (Pair)")
-  (let ((p5 (list (daifugo-card-system:make-card :rank 5 :suit :spades) (daifugo-card-system:make-card :rank 5 :hearts)))
-        (p7 (list (daifugo-card-system:make-card :rank 7 :suit :clubs) (daifugo-card-system:make-card :rank 7 :diamonds)))
-        (not-a-pair (list (daifugo-card-system:make-card :rank 5 :suit :spades) (daifugo-card-system:make-card :rank 6 :hearts))))
+  (let ((p5 (list (daifugo-card-system:create-card  5 :spades) (daifugo-card-system:create-card  5 :hearts)))
+        (p7 (list (daifugo-card-system:create-card  7 :clubs) (daifugo-card-system:create-card  7 :diamonds)))
+        (not-a-pair (list (daifugo-card-system:create-card  5 :spades) (daifugo-card-system:create-card  6 :hearts))))
     (test-assert (daifugo-game-logic:is-valid-hand p5) "同じランク2枚のペアは有効")
     (test-assert (not (daifugo-game-logic:is-valid-hand not-a-pair)) "異なるランク2枚はペアとして無効")
     (test-assert (eq :pair (daifugo-game-logic:get-hand-type p5)) "手札タイプが :pair として検出される")
@@ -99,24 +99,24 @@
 (defun test-triple-logic ()
   "3枚出しのロジックをテスト"
   (test-section "トリプル (Triple)")
-  (let ((t8 (list (daifugo-card-system:make-card :rank 8 :suit :spades) (daifugo-card-system:make-card :rank 8 :hearts) (daifugo-card-system:make-card :rank 8 :clubs))))
+  (let ((t8 (list (daifugo-card-system:create-card  8 :spades) (daifugo-card-system:create-card  8 :hearts) (daifugo-card-system:create-card  8 :clubs))))
     (test-assert (daifugo-game-logic:is-valid-hand t8) "同じランク3枚のトリプルは有効")
     (test-assert (eq :triple (daifugo-game-logic:get-hand-type t8)) "手札タイプが :triple として検出される")))
 
 (defun test-quadruple-logic ()
   "4枚出しのロジックをテスト"
   (test-section "クアドラプル (Quadruple)")
-  (let ((qK (list (daifugo-card-system:make-card :rank 13 :suit :spades) (daifugo-card-system:make-card :rank 13 :hearts) (daifugo-card-system:make-card :rank 13 :clubs) (daifugo-card-system:make-card :rank 13 :diamonds))))
+  (let ((qK (list (daifugo-card-system:create-card  13 :spades) (daifugo-card-system:create-card  13 :hearts) (daifugo-card-system:create-card  13 :clubs) (daifugo-card-system:create-card  13 :diamonds))))
     (test-assert (daifugo-game-logic:is-valid-hand qK) "同じランク4枚のクアドラプルは有効")
     (test-assert (eq :quadruple (daifugo-game-logic:get-hand-type qK)) "手札タイプが :quadruple として検出される")))
 
 (defun test-sequence-logic ()
   "階段出しのロジックをテスト"
   (test-section "階段 (Sequence)")
-  (let ((seq345 (list (daifugo-card-system:make-card :rank 3 :suit :spades) (daifugo-card-system:make-card :rank 4 :hearts) (daifugo-card-system:make-card :rank 5 :clubs)))
-        (seq789 (list (daifugo-card-system:make-card :rank 7 :suit :spades) (daifugo-card-system:make-card :rank 8 :hearts) (daifugo-card-system:make-card :rank 9 :clubs)))
-        (not-a-seq (list (daifugo-card-system:make-card :rank 3 :suit :spades) (daifugo-card-system:make-card :rank 5 :hearts) (daifugo-card-system:make-card :rank 6 :clubs)))
-        (short-seq (list (daifugo-card-system:make-card :rank 3 :suit :spades) (daifugo-card-system:make-card :rank 4 :hearts))))
+  (let ((seq345 (list (daifugo-card-system:create-card  3 :spades) (daifugo-card-system:create-card  4 :hearts) (daifugo-card-system:create-card  5 :clubs)))
+        (seq789 (list (daifugo-card-system:create-card  7 :spades) (daifugo-card-system:create-card  8 :hearts) (daifugo-card-system:create-card  9 :clubs)))
+        (not-a-seq (list (daifugo-card-system:create-card  3 :spades) (daifugo-card-system:create-card  5 :hearts) (daifugo-card-system:create-card  6 :clubs)))
+        (short-seq (list (daifugo-card-system:create-card  3 :spades) (daifugo-card-system:create-card  4 :hearts))))
     (test-assert (daifugo-game-logic:is-valid-hand seq345) "3-4-5の階段は有効")
     (test-assert (not (daifugo-game-logic:is-valid-hand not-a-seq)) "数字が連続していないので階段として無効")
     (test-assert (not (daifugo-game-logic:is-valid-hand short-seq)) "2枚では階段として無効")
@@ -126,9 +126,9 @@
 (defun test-hand-compatibility-logic ()
   "手札の互換性ロジックをテスト"
   (test-section "手札の互換性 (Hand Compatibility)")
-  (let ((single-a (list (daifugo-card-system:make-card :rank 7 :spades)))
-        (single-b (list (daifugo-card-system:make-card :rank 9 :hearts)))
-        (pair-a (list (daifugo-card-system:make-card :rank 8 :spades) (daifugo-card-system:make-card :rank 8 :hearts))))
+  (let ((single-a (list (daifugo-card-system:create-card  7 :spades)))
+        (single-b (list (daifugo-card-system:create-card  9 :hearts)))
+        (pair-a (list (daifugo-card-system:create-card  8 :spades) (daifugo-card-system:create-card  8 :hearts))))
     (test-assert (daifugo-game-logic:hands-compatible-p single-a single-b) "シングル同士は互換性あり")
     (test-assert (not (daifugo-game-logic:hands-compatible-p single-a pair-a)) "シングルとペアは互換性なし")))
 

@@ -125,6 +125,8 @@
            #:register-rule-system
            #:get-rule-system
            #:is-rule-registered-p
+           #:get-game-extensions
+           #:process-turn
            #:load-user-rule-script
            #:*dynamic-rules*
            #:*rule-systems*))
@@ -138,7 +140,8 @@
            #:load-rule-file
            #:unload-rule
            #:reload-rule
-           #:get-rule-status))
+           #:get-rule-status
+           #:validate-rule-file))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
@@ -150,6 +153,7 @@
            #:create-auto-tester
            #:auto-tester-p
            #:tester-name
+           #:add-test-case
            
            ;; === ゲーム実行・シミュレーション ===
            #:run-single-game

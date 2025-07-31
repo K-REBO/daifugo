@@ -141,6 +141,16 @@
   "ルールがシステムに登録されているかを確認"
   (not (null (gethash rule-name *rule-systems*))))
 
+(defun get-game-extensions (game-state)
+  "ゲーム状態の拡張機能を取得"
+  (declare (ignore game-state))
+  (make-hash-table :test #'eq))
+
+(defun process-turn (game-state player-id action)
+  "ターンを処理"
+  (declare (ignore game-state player-id action))
+  t)
+
 (defun load-user-rule-script (file-path)
   "ユーザー作成のルールスクリプトを動的にロード（Lispの真髄）"
   (handler-case
