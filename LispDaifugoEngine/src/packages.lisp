@@ -144,7 +144,8 @@
            #:get-rule-status
            #:validate-rule-file
            #:load-all-rules
-           #:add-rule-dependency))
+           #:add-rule-dependency
+           #:resolve-dependencies))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
@@ -348,6 +349,11 @@
            #:11back-system-p
            #:is-11back-enabled-p
            #:get-11back-settings
+           #:detect-11back-trigger
+           #:is-valid-11back-play-p
+           #:get-11back-type
+           #:trigger-11back
+           #:is-11back-active-p
            #:apply-11back-rule
            #:is-11back-applicable-p))
 
@@ -365,7 +371,11 @@
            #:allows-ace-low-p
            #:compare-kaidan
            #:can-compare-kaidan-p
-           #:compare-kaidan-with-revolution))
+           #:compare-kaidan-with-revolution
+           #:contains-joker-p
+           #:count-jokers
+           #:is-suit-mixed-p
+           #:is-same-suit-kaidan-p))
 
 (defpackage :daifugo-rule-set
   (:use :common-lisp :daifugo-rule-engine)

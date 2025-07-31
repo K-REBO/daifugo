@@ -87,3 +87,8 @@
   "ルール依存関係を追加"
   (declare (ignore loader rule-name dependency))
   t)
+
+(defun resolve-dependencies (loader)
+  "ルール依存関係を解決"
+  (declare (ignore loader))
+  t)

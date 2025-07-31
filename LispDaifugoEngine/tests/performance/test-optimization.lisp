@@ -38,7 +38,8 @@
                  :success-count 0
                  :failure-count 0)))
     
-    (gc) ; ガベージコレクション実行
+    #+sbcl (sb-ext:gc) ; ガベージコレクション実行
+    #-sbcl nil
     (setf (performance-metric-memory-before metric) 
           (handler-case
               #+sbcl (sb-ext:get-bytes-consed)

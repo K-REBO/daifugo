@@ -287,7 +287,7 @@
             (push (format nil "開始ベンチマーク~A: ~A" i e) 
                   (test-result-error-log result)))))
       
-      (let ((start-time-benchmark (- (get-universal-time) start-benchmark)))
+      (let ((start-time-benchmark (- (get-universal-time) start-time)))
         (setf (gethash :start-time (test-result-performance-metrics result)) 
               start-time-benchmark)))
     
