@@ -122,6 +122,10 @@
      革命状態（真偽値）"
   (kakumei-system-active-p kakumei-system))
 
+(defun kakumei-active-p (kakumei-system)
+  "革命状態が有効かどうかを確認（エイリアス）"
+  (is-kakumei-active-p kakumei-system))
+
 (defun get-kakumei-count (kakumei-system)
   "革命回数を取得
    

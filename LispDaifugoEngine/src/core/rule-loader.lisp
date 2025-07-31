@@ -92,3 +92,8 @@
   "ルール依存関係を解決"
   (declare (ignore loader))
   t)
+
+(defun detect-circular-dependencies (loader)
+  "循環依存関係を検出"
+  (declare (ignore loader))
+  nil)

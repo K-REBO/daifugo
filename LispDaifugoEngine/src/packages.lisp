@@ -145,7 +145,8 @@
            #:validate-rule-file
            #:load-all-rules
            #:add-rule-dependency
-           #:resolve-dependencies))
+           #:resolve-dependencies
+           #:detect-circular-dependencies))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
@@ -338,7 +339,8 @@
   (:export #:create-kakumei-system
            #:kakumei-system-p
            #:trigger-kakumei
-           #:is-kakumei-active-p))
+           #:is-kakumei-active-p
+           #:kakumei-active-p))
 
 (defpackage :daifugo-rules
   (:use :common-lisp :daifugo-rule-engine))
