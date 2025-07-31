@@ -7,6 +7,8 @@
 ;;; - 特殊階段（ジョーカー含む、エース処理等）
 ;;; - 他ルールとの相互作用管理
 
+;;; Package definition moved to packages.lisp to avoid conflicts
+#|
 (defpackage :daifugo-kaidan
   (:use :common-lisp)
   (:export ;; === 基本階段システム機能 ===
@@ -67,6 +69,7 @@
            #:sequence-p                ; 旧形式互換
            #:valid-sequence-p          ; 旧形式互換
            #:compare-sequences))       ; 旧形式互換
+|#
 
 (in-package :daifugo-kaidan)
 

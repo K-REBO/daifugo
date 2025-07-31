@@ -6,38 +6,7 @@
 ;;; - 単体ジャック、ペア、3枚、4枚すべてで発動可能
 ;;; - ゲーム全体に影響する永続効果
 
-(defpackage :daifugo-11back
-  (:use :common-lisp)
-  (:export ;; === 基本システム機能 ===
-           #:create-11back-system       ; 11バックシステム作成
-           #:11back-system-p            ; 11バックシステム判定
-           #:is-11back-enabled-p        ; 11バック有効状態確認
-           #:get-11back-settings        ; 11バック設定取得
-           
-           ;; === 11バック検出・発動 ===
-           #:detect-11back-trigger      ; 11バックトリガー検出
-           #:is-valid-11back-play-p     ; 有効な11バックプレイ判定
-           #:get-11back-type            ; 11バックタイプ取得
-           #:trigger-11back             ; 11バック発動
-           #:is-11back-active-p         ; 11バック有効状態確認
-           
-           ;; === カード強度比較 ===
-           #:compare-card-strength      ; カード強度比較（11バック考慮）
-           #:get-card-strength-order    ; カード強度順序取得
-           #:is-strength-reversed-p     ; 強度逆転状態確認
-           #:apply-strength-reversal    ; 強度逆転適用
-           
-           ;; === ゲーム統合 ===
-           #:integrate-with-game        ; ゲーム統合
-           #:is-integrated-with-game-p  ; ゲーム統合確認
-           #:can-trigger-in-game-p      ; ゲーム内発動可能確認
-           #:get-game-integration-status ; ゲーム統合状態取得
-           
-           ;; === 履歴・統計 ===
-           #:enable-history-tracking    ; 履歴追跡有効化
-           #:get-11back-history         ; 11バック履歴取得
-           #:get-trigger-count-by-type  ; タイプ別発動回数取得
-           #:get-total-trigger-count    ; 総発動回数取得))
+;;; Package definition moved to packages.lisp to avoid conflicts
 
 (in-package :daifugo-11back)
 

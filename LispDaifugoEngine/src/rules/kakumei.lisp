@@ -7,6 +7,8 @@
 ;;; - 革命パターンの分類・検証
 ;;; - ゲームエンジンとの統合機能
 
+;;; Package definition moved to packages.lisp to avoid conflicts
+#|
 (defpackage :daifugo-kakumei
   (:use :common-lisp)
   (:export ;; === 基本革命システム機能 ===
@@ -55,6 +57,7 @@
            #:revolution-active-p       ; 旧形式互換
            #:trigger-revolution        ; 旧形式互換
            #:check-revolution))        ; 旧形式互換
+|#
 
 (in-package :daifugo-kakumei)
 
