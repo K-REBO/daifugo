@@ -1,9 +1,8 @@
 ;;; test-game-logger-fixed.lisp - ゲームロガーシステムの修正版テスト
 ;;; 実在する機能のみをテストする最小限版
 
-;; プロジェクトルートからの相対パスでロード
-(load (merge-pathnames "../simple-test-framework.lisp" *load-truename*))
-(load (merge-pathnames "../../src/testing/game-logger.lisp" *load-truename*))
+;; simple-test-frameworkをロード
+(load "tests/simple-test-framework.lisp")
 
 (defpackage :test-game-logger-fixed
   (:use :common-lisp :simple-test-framework))

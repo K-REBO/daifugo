@@ -1,9 +1,8 @@
 ;;; test-game-logger.lisp - 強力なゲームロガーシステムのテスト
 ;;; 統合版：基本テスト（defun形式）+ 詳細テスト（simple-test-framework形式）
 
-(load "../debug/final-test.lisp")
-;; simple-test-framework も使用可能にする
-(load "../simple-test-framework.lisp")
+;; simple-test-framework を使用可能にする
+(load "tests/simple-test-framework.lisp")
 
 (defpackage :daifugo-game-logger-test
   (:use :common-lisp :simple-test-framework))

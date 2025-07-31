@@ -39,8 +39,10 @@
   (test-function-exists 'daifugo-card-system:compare-cards "カード比較関数が存在する")
   
   ;; 実際の強度計算テスト
-  (let ((strength-3 (daifugo-card-system:calculate-card-strength 3))
-        (strength-7 (daifugo-card-system:calculate-card-strength 7)))
+  (let* ((card-3 (daifugo-card-system:make-card :rank 3 :suit :spades))
+         (card-7 (daifugo-card-system:make-card :rank 7 :suit :hearts))
+         (strength-3 (daifugo-card-system:card-strength card-3))
+         (strength-7 (daifugo-card-system:card-strength card-7)))
     (test-assert (numberp strength-3) "カード強度3が数値である")
     (test-assert (numberp strength-7) "カード強度7が数値である")
     (test-assert (< strength-3 strength-7) "7は3より強い")))

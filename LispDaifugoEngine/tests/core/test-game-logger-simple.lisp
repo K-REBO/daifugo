@@ -1,9 +1,8 @@
 ;;; test-game-logger-simple.lisp - ゲームロガーシステムの基本機能テスト
 ;;; simple-test-framework使用版
 
-;; プロジェクトルートからの相対パスでロード
-(load (merge-pathnames "../simple-test-framework.lisp" *load-truename*))
-(load (merge-pathnames "../../src/testing/game-logger.lisp" *load-truename*))
+;; simple-test-frameworkをロード
+(load "tests/simple-test-framework.lisp")
 
 (defpackage :test-game-logger-simple
   (:use :common-lisp :simple-test-framework))
