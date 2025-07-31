@@ -9,7 +9,8 @@
            #:test-section
            #:run-test-suite
            #:*tests-passed*
-           #:*tests-total*))
+           #:*tests-total*
+           #:test-with-error-handling))
 
 (in-package :simple-test-framework)
 
@@ -46,6 +47,15 @@
 (defun test-section (section-name)
   "テストセクションのヘッダーを表示"
   (format t "~%--- ~A ---~%" section-name))
+
+(defmacro test-with-error-handling (test-form success-msg error-msg)
+  "エラーハンドリング付きテストマクロ"
+  `(handler-case
+       (progn
+         ,test-form
+         (format t "✅ ~A~%" ,success-msg))
+     (error (e)
+       (format t "⚠️  ~A: ~A~%" ,error-msg e))))
 
 ;;; テストスイート実行関数
 (defun run-test-suite (suite-name test-functions)

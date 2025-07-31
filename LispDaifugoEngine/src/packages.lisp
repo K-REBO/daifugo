@@ -129,6 +129,17 @@
            #:*dynamic-rules*
            #:*rule-systems*))
 
+(defpackage :daifugo-rule-loader
+  (:use :common-lisp)
+  (:export #:create-rule-loader
+           #:rule-loader-p
+           #:get-loaded-rules
+           #:discover-rule-files
+           #:load-rule-file
+           #:unload-rule
+           #:reload-rule
+           #:get-rule-status))
+
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
 ;;; ---------------------------------------------------------------------------
