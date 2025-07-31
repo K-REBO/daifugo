@@ -353,7 +353,7 @@
                 (daifugo-game-engine:enable-rule rule)
                 (when (daifugo-game-engine:rule-enabled-p rule)
                   (daifugo-game-logger:log-info logger 
-                    (format nil "Rule ~A dynamically enabled" rule))))))))
+                    (format nil "Rule ~A dynamically enabled" rule)))))
             
             (incf games-run)
             (incf (test-result-completed-games result))

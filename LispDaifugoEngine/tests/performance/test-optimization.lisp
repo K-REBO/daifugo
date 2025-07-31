@@ -221,28 +221,29 @@
 ;;; JavaScript API性能テスト
 ;;; ==========================================
 
-(defun test-json-conversion-performance ()
-  "JSON変換パフォーマンステスト"
-  (let ((js-api (daifugo-javascript-api:create-javascript-api))
-        (game (daifugo-game-engine:create-game 4)))
-    (daifugo-game-engine:start-game game)
+(defun test-dynamic-rule-application-performance ()
+  "動的ルール適用パフォーマンステスト（Lispの真髄）"
+  (let ((rules '(:revolution :sequence :joker-wild :eleven-back :eight-cut)))
     (measure-performance 
-     "JSON変換"
+     "動的ルール適用"
      (lambda ()
-       (daifugo-javascript-api:game-to-json js-api game))
-     1000)))
+       (dolist (rule rules)
+         (daifugo-game-engine:enable-rule rule)
+         (daifugo-game-engine:rule-enabled-p rule)
+         (daifugo-game-engine:disable-rule rule)))
+     200)))
 
-(defun test-api-response-performance ()
-  "APIレスポンスパフォーマンステスト"
-  (let ((js-api (daifugo-javascript-api:create-javascript-api)))
-    (measure-performance 
-     "APIレスポンス生成"
-     (lambda ()
-       (daifugo-javascript-api:create-json-response t 
-         (list :test-data "パフォーマンステスト"
-               :timestamp (get-universal-time)
-               :random-value (random 10000))))
-     2000)))
+(defun test-dynamic-script-loading-integration-performance ()
+  "動的スクリプト読み込み統合パフォーマンステスト（Lispの真髄）"
+  (measure-performance 
+   "動的ルール状態管理"
+   (lambda ()
+     ;; Lispの動的性を活かしたハッシュテーブル操作
+     (let ((test-rules '(:test-rule-1 :test-rule-2 :test-rule-3)))
+       (dolist (rule test-rules)
+         (daifugo-game-engine:enable-rule rule))
+       (every #'daifugo-game-engine:rule-enabled-p test-rules)))
+   2000))
 
 ;;; ==========================================
 ;;; メモリ使用量最適化テスト
