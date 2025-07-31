@@ -14,11 +14,11 @@
   "カードシステムの主要機能テスト"
   (test-assert (find-package :daifugo-card-system) "カードシステムパッケージが存在する")
   (test-function-exists 'daifugo-card-system:create-deck "デッキ作成関数が定義されている")
-  (test-function-exists 'daifugo-card-system:make-card "カード作成関数が定義されている"))
+  (test-function-exists 'daifugo-card-system:create-card "カード作成関数が定義されている"))
 
 (defun test-card-properties-validation ()
   "カード属性検証テスト"
-  (let ((card (daifugo-card-system:make-card :rank 7 :suit :spades)))
+  (let ((card (daifugo-card-system:create-card  7 :spades)))
     (test-assert (not (null card)) "カードが作成される")
     (test-assert (eq (daifugo-card-system:card-rank card) 7) "カードランクが正しい")
     (test-assert (eq (daifugo-card-system:card-suit card) :spades) "カードスートが正しい")))
@@ -39,8 +39,8 @@
   (test-function-exists 'daifugo-card-system:compare-cards "カード比較関数が存在する")
   
   ;; 実際の強度計算テスト
-  (let* ((card-3 (daifugo-card-system:make-card :rank 3 :suit :spades))
-         (card-7 (daifugo-card-system:make-card :rank 7 :suit :hearts))
+  (let* ((card-3 (daifugo-card-system:create-card 3 :spades))
+         (card-7 (daifugo-card-system:create-card 7 :hearts))
          (strength-3 (daifugo-card-system:card-strength card-3))
          (strength-7 (daifugo-card-system:card-strength card-7)))
     (test-assert (numberp strength-3) "カード強度3が数値である")
@@ -50,8 +50,8 @@
 (defun test-hand-validation-basics ()
   "手札検証の基本機能テスト"
   ;; 複数枚カードでの比較テスト
-  (let ((card1 (daifugo-card-system:make-card :rank 5 :suit :hearts))
-        (card2 (daifugo-card-system:make-card :rank 10 :suit :clubs)))
+  (let ((card1 (daifugo-card-system:create-card  5 :hearts))
+        (card2 (daifugo-card-system:create-card  10 :clubs)))
     (test-assert (not (null card1)) "カード1が作成される")
     (test-assert (not (null card2)) "カード2が作成される")
     
@@ -65,9 +65,9 @@
 (defun test-multiple-card-operations ()
   "複数カード操作テスト"
   (let ((cards (list 
-                (daifugo-card-system:make-card :rank 2 :suit :diamonds)
-                (daifugo-card-system:make-card :rank 6 :suit :spades)
-                (daifugo-card-system:make-card :rank 9 :suit :hearts))))
+                (daifugo-card-system:create-card  2 :diamonds)
+                (daifugo-card-system:create-card  6 :spades)
+                (daifugo-card-system:create-card  9 :hearts))))
     (test-assert (= (length cards) 3) "複数カードが作成される")
     (test-assert (every #'identity cards) "すべてのカードが有効である")
     (test-assert (every (lambda (card)
@@ -84,7 +84,7 @@
 
 (defun test-minimal-card-creation-detailed ()
   "最小限のカード作成テスト（軽量版・詳細）"
-  (let ((card (daifugo-card-system:make-card :rank 7 :suit :spades)))
+  (let ((card (daifugo-card-system:create-card  7 :spades)))
     (test-assert (not (null card)) "カードが作成される")))
 
 (defun test-minimal-deck-creation-detailed ()

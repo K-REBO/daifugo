@@ -109,6 +109,9 @@
 (defvar *dynamic-rules* (make-hash-table :test #'eq)
   "動的に読み込まれたルールの管理ハッシュテーブル")
 
+(defvar *rule-systems* (make-hash-table :test #'eq)
+  "登録されたルールシステムの管理ハッシュテーブル")
+
 (defun rule-enabled-p (rule-name &optional game-state)
   "指定されたルールが有効かどうかを動的に判定"
   (declare (ignore game-state))
@@ -123,6 +126,20 @@
   "ルールを動的に無効化"
   (setf (gethash rule-name *dynamic-rules*) nil)
   (format t "Rule ~A disabled~%" rule-name))
+
+(defun register-rule-system (rule-name rule-system)
+  "ルールシステムを登録（テスト用）"
+  (setf (gethash rule-name *rule-systems*) rule-system)
+  (format t "Rule system ~A registered~%" rule-name)
+  rule-system)
+
+(defun get-rule-system (rule-name)
+  "登録されたルールシステムを取得"
+  (gethash rule-name *rule-systems*))
+
+(defun is-rule-registered-p (rule-name)
+  "ルールがシステムに登録されているかを確認"
+  (not (null (gethash rule-name *rule-systems*))))
 
 (defun load-user-rule-script (file-path)
   "ユーザー作成のルールスクリプトを動的にロード（Lispの真髄）"

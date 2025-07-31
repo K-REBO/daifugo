@@ -251,7 +251,7 @@
 
 (defun test-memory-efficiency ()
   "メモリ効率テスト"
-  (let ((initial-memory (sb-kernel:get-bytes-consed))
+  (let ((initial-memory #+sbcl (sb-ext:get-bytes-consed) #-sbcl 0)
         (objects '()))
     
     ;; 大量オブジェクト作成
@@ -262,11 +262,11 @@
       (push (daifugo-rule-set:create-rule-set 
              (intern (format nil "MEM-RULE-~A" i))) objects))
     
-    (let ((after-creation (sb-kernel:get-bytes-consed)))
+    (let ((after-creation #+sbcl (sb-ext:get-bytes-consed) #-sbcl 0))
       (gc) ; ガベージコレクション
       (setf objects nil) ; 参照を削除
       (gc) ; 再度ガベージコレクション
-      (let ((after-gc (sb-kernel:get-bytes-consed)))
+      (let ((after-gc #+sbcl (sb-ext:get-bytes-consed) #-sbcl 0))
         
         (format t "メモリ使用量テスト:~%")
         (format t "  初期: ~A bytes~%" initial-memory)

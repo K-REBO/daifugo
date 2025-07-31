@@ -122,8 +122,12 @@
            #:rule-enabled-p
            #:enable-rule
            #:disable-rule
+           #:register-rule-system
+           #:get-rule-system
+           #:is-rule-registered-p
            #:load-user-rule-script
-           #:*dynamic-rules*))
+           #:*dynamic-rules*
+           #:*rule-systems*))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
@@ -232,8 +236,51 @@
            #:get-memory-usage))
 
 (defpackage :daifugo-game-logger
-  (:use :common-lisp :daifugo-event-system)
-  (:export #:log-event #:get-game-log))
+  (:use :common-lisp)
+  (:export ;; === 基本ロガー機能 ===
+           #:create-logger            ; ロガー作成
+           #:logger-p                 ; ロガー判定
+           #:logger-name              ; ロガー名取得
+           #:log-info                 ; 情報ログ
+           #:log-warn                 ; 警告ログ
+           #:log-error                ; エラーログ
+           #:log-debug                ; デバッグログ
+           #:set-log-level            ; ログレベル設定
+           #:log-count                ; ログ件数取得
+           #:clear-logs               ; ログクリア
+           
+           ;; === ゲーム専用ログ機能 ===
+           #:log-game-state           ; ゲーム状態ログ
+           #:log-player-action        ; プレイヤーアクションログ
+           #:log-card-play            ; カード出しログ
+           #:log-hand-state           ; 手札状態ログ
+           #:log-turn-start           ; ターン開始ログ
+           #:log-turn-end             ; ターン終了ログ
+           #:log-rule-applied         ; ルール適用ログ
+           
+           ;; === フィルタリング・検索機能 ===
+           #:filter-logs              ; ログフィルタリング
+           #:search-logs              ; ログ検索
+           #:logs-before              ; 指定時刻以前ログ
+           #:logs-after               ; 指定時刻以降ログ
+           
+           ;; === 出力・永続化機能 ===
+           #:format-logs              ; ログフォーマット出力
+           #:save-logs                ; ログファイル保存
+           #:load-logs                ; ログファイル読み込み
+           
+           ;; === 統計・分析機能 ===
+           #:get-log-statistics       ; ログ統計取得
+           #:stat-total               ; 総ログ数
+           #:stat-info-count          ; 情報ログ数
+           #:stat-warn-count          ; 警告ログ数
+           #:stat-error-count         ; エラーログ数
+           
+           ;; === パフォーマンス計測機能 ===
+           #:start-timer              ; タイマー開始
+           #:stop-timer               ; タイマー停止
+           #:get-performance-metrics  ; パフォーマンス取得
+           #:metric-exists-p))
 
 (defpackage :daifugo-utils
   (:use :common-lisp)
