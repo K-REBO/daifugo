@@ -97,3 +97,9 @@
   "循環依存関係を検出"
   (declare (ignore loader))
   nil)
+
+(defun get-first-loaded-rule-name (loader)
+  "最初に読み込まれたルール名を取得"
+  (let ((loaded-rules (rule-loader-loaded-rules loader)))
+    (when loaded-rules
+      (pathname-name (first loaded-rules)))))

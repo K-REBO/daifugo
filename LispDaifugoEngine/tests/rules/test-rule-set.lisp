@@ -323,5 +323,10 @@
     (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
     (= failed 0)))
 
+;; テスト実行関数の定義（automated-runner用）
+(defun run-rule-set-tests-main ()
+  "メインテスト実行関数"
+  (run-rule-set-tests))
+
 ;; テスト実行
 (run-rule-set-tests)

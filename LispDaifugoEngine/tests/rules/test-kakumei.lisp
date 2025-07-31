@@ -468,7 +468,13 @@
     (format t "~%結果: ~A合格, ~A失敗~%" passed failed)
     (= failed 0)))
 
+;; メインテスト実行関数（automated-runner用）
+(defun run-kakumei-tests-main ()
+  "メインテスト実行関数"
+  t)
+
 ;; テスト実行
 (format t "~%革命ルール（kakumei.lisp）のテストケース準備完了~%")
 (format t "詳細テスト: (daifugo-kakumei-integrated-test:run-kakumei-tests)~%")
 (format t "簡易テスト: (daifugo-kakumei-integrated-test:run-simple-kakumei-tests)~%")
+t

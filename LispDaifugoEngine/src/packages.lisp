@@ -146,7 +146,8 @@
            #:load-all-rules
            #:add-rule-dependency
            #:resolve-dependencies
-           #:detect-circular-dependencies))
+           #:detect-circular-dependencies
+           #:get-first-loaded-rule-name))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
@@ -356,6 +357,7 @@
            #:get-11back-type
            #:trigger-11back
            #:is-11back-active-p
+           #:back-active-p
            #:apply-11back-rule
            #:is-11back-applicable-p))
 
@@ -377,7 +379,13 @@
            #:contains-joker-p
            #:count-jokers
            #:is-suit-mixed-p
-           #:is-same-suit-kaidan-p))
+           #:is-same-suit-kaidan-p
+           #:set-min-kaidan-length
+           #:enable-kaidan
+           #:disable-kaidan
+           #:set-ace-mode
+           #:set-strength-mode
+           #:get-strength-mode))
 
 (defpackage :daifugo-rule-set
   (:use :common-lisp :daifugo-rule-engine)
