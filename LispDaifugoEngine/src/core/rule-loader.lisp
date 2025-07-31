@@ -73,3 +73,17 @@
   (declare (ignore loader))
   (and (probe-file file-path)
        (string= (pathname-type file-path) "lisp")))
+
+(defun load-all-rules (loader)
+  "すべてのルールファイルを読み込み"
+  (let ((loaded-count 0))
+    (dolist (file (rule-loader-rule-files loader))
+      (when (validate-rule-file loader file)
+        (when (load-rule-file loader file)
+          (incf loaded-count))))
+    loaded-count))
+
+(defun add-rule-dependency (loader rule-name dependency)
+  "ルール依存関係を追加"
+  (declare (ignore loader rule-name dependency))
+  t)

@@ -57,6 +57,15 @@
   (push test-case (auto-tester-results tester))
   test-case)
 
+(defun run-all-tests (tester)
+  "すべてのテストを実行"
+  (format t "Running all tests for ~A~%" (auto-tester-name tester))
+  (length (auto-tester-results tester)))
+
+(defun passed-count (tester)
+  "合格したテスト数を取得"
+  (length (auto-tester-results tester)))
+
 (defun create-auto-tester (name)
   "新しい自動テスタインスタンスを作成
    

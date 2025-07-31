@@ -127,6 +127,7 @@
            #:is-rule-registered-p
            #:get-game-extensions
            #:process-turn
+           #:is-game-active-p
            #:load-user-rule-script
            #:*dynamic-rules*
            #:*rule-systems*))
@@ -141,7 +142,9 @@
            #:unload-rule
            #:reload-rule
            #:get-rule-status
-           #:validate-rule-file))
+           #:validate-rule-file
+           #:load-all-rules
+           #:add-rule-dependency))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)
@@ -154,6 +157,8 @@
            #:auto-tester-p
            #:tester-name
            #:add-test-case
+           #:run-all-tests
+           #:passed-count
            
            ;; === ゲーム実行・シミュレーション ===
            #:run-single-game
@@ -342,6 +347,7 @@
   (:export #:create-11back-system
            #:11back-system-p
            #:is-11back-enabled-p
+           #:get-11back-settings
            #:apply-11back-rule
            #:is-11back-applicable-p))
 
@@ -355,7 +361,11 @@
            #:detect-kaidan-pattern
            #:get-kaidan-length
            #:get-kaidan-min-rank
-           #:get-kaidan-max-rank))
+           #:get-kaidan-max-rank
+           #:allows-ace-low-p
+           #:compare-kaidan
+           #:can-compare-kaidan-p
+           #:compare-kaidan-with-revolution))
 
 (defpackage :daifugo-rule-set
   (:use :common-lisp :daifugo-rule-engine)

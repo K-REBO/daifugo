@@ -151,6 +151,12 @@
   (declare (ignore game-state player-id action))
   t)
 
+(defun is-game-active-p (game-state)
+  "ゲームがアクティブかどうかを判定"
+  (and game-state
+       (daifugo-game-state:game-state-p game-state)
+       (eq (daifugo-game-state:game-state-game-phase game-state) :playing)))
+
 (defun load-user-rule-script (file-path)
   "ユーザー作成のルールスクリプトを動的にロード（Lispの真髄）"
   (handler-case
