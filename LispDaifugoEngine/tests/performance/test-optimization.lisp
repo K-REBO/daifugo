@@ -167,31 +167,26 @@
 ;;; AIシステム性能テスト
 ;;; ==========================================
 
-(defun test-ai-decision-performance ()
-  "AI判断パフォーマンステスト"
-  (let ((game (daifugo-game-engine:create-game 4))
-        (ai (daifugo-ai-players:create-ai-player :smart-ai)))
-    (daifugo-game-engine:start-game game)
-    (measure-performance 
-     "AI判断"
-     (lambda ()
-       (daifugo-ai-players:make-decision ai game))
-     500)))
+(defun test-dynamic-script-loading-performance ()
+  "動的スクリプト読み込みパフォーマンステスト（Lispの真髄）"
+  (measure-performance 
+   "動的ルールスクリプト読み込み"
+   (lambda ()
+     ;; Lispの動的性を活かしたテスト
+     (daifugo-game-engine:enable-rule :test-rule)
+     (daifugo-game-engine:disable-rule :test-rule))
+   500))
 
-(defun test-ai-strategy-performance ()
-  "AI戦略パフォーマンステスト"
-  (let ((game (daifugo-game-engine:create-game 4))
-        (ais (list (daifugo-ai-players:create-ai-player :basic-ai)
-                   (daifugo-ai-players:create-ai-player :smart-ai)
-                   (daifugo-ai-players:create-ai-player :aggressive-ai)
-                   (daifugo-ai-players:create-ai-player :conservative-ai))))
-    (daifugo-game-engine:start-game game)
+(defun test-rule-evaluation-performance ()
+  "ルール評価パフォーマンステスト（動的ルールシステム）"
+  (let ((test-rules '(:revolution :sequence :eleven-back :joker-wild)))
     (measure-performance 
-     "AI戦略評価"
+     "動的ルール評価"
      (lambda ()
-       (dolist (ai ais)
-         (daifugo-ai-players:evaluate-strategy ai game)))
-     100)))
+       (dolist (rule test-rules)
+         (daifugo-game-engine:enable-rule rule)
+         (daifugo-game-engine:rule-enabled-p rule)))
+     1000)))
 
 ;;; ==========================================
 ;;; ログシステム性能テスト

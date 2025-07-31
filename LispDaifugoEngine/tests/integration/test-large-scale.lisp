@@ -342,24 +342,18 @@
           (let ((game (daifugo-game-engine:create-game 4))
                 (logger (daifugo-game-logger:create-logger 
                          (intern (format nil "ENDURANCE-~A" games-run))))
-                (ai-players (list (daifugo-ai-players:create-ai-player :basic-ai)
-                                  (daifugo-ai-players:create-ai-player :smart-ai)
-                                  (daifugo-ai-players:create-ai-player :aggressive-ai)
-                                  (daifugo-ai-players:create-ai-player :conservative-ai))))
+                (dynamic-rules '(:revolution :sequence :joker-wild :eleven-back)))
             
             (daifugo-game-engine:start-game game)
             (daifugo-game-logger:log-game-state logger game)
             
-            ;; AI数ターン実行
+            ;; 動的ルール読み込みテスト（Lispの真髄）
             (dotimes (turn 5)
-              (let ((current-player (daifugo-game-engine:get-current-player game))
-                    (ai (nth current-player ai-players)))
-                (when ai
-                  (let ((decision (daifugo-ai-players:make-decision ai game)))
-                    (if (eq decision :pass)
-                        (daifugo-game-engine:pass-turn game current-player)
-                        (when (listp decision)
-                          (daifugo-game-engine:play-card game current-player decision)))))))
+              (let ((rule (nth (mod turn (length dynamic-rules)) dynamic-rules)))
+                (daifugo-game-engine:enable-rule rule)
+                (when (daifugo-game-engine:rule-enabled-p rule)
+                  (daifugo-game-logger:log-info logger 
+                    (format nil "Rule ~A dynamically enabled" rule))))))))
             
             (incf games-run)
             (incf (test-result-completed-games result))

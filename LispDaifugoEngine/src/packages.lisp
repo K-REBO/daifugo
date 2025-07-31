@@ -118,7 +118,12 @@
            #:add-log
            #:set-rule-set
            #:get-rule-set
-           #:create-game-state))
+           #:create-game-state
+           #:rule-enabled-p
+           #:enable-rule
+           #:disable-rule
+           #:load-user-rule-script
+           #:*dynamic-rules*))
 
 ;;; ---------------------------------------------------------------------------
 ;;; サブシステム (Subsystems)

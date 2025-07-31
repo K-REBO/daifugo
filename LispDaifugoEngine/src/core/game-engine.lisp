@@ -105,3 +105,33 @@
   "ゲーム状態を作成（create-initial-game-stateのエイリアス）"
   (daifugo-game-state:create-initial-game-state players))
 
+;;; 動的ルール管理システム（Lispの真髄）
+(defvar *dynamic-rules* (make-hash-table :test #'eq)
+  "動的に読み込まれたルールの管理ハッシュテーブル")
+
+(defun rule-enabled-p (rule-name &optional game-state)
+  "指定されたルールが有効かどうかを動的に判定"
+  (declare (ignore game-state))
+  (gethash rule-name *dynamic-rules*))
+
+(defun enable-rule (rule-name)
+  "ルールを動的に有効化（Lispファイル読み込み対応）"
+  (setf (gethash rule-name *dynamic-rules*) t)
+  (format t "Rule ~A enabled dynamically~%" rule-name))
+
+(defun disable-rule (rule-name)
+  "ルールを動的に無効化"
+  (setf (gethash rule-name *dynamic-rules*) nil)
+  (format t "Rule ~A disabled~%" rule-name))
+
+(defun load-user-rule-script (file-path)
+  "ユーザー作成のルールスクリプトを動的にロード（Lispの真髄）"
+  (handler-case
+      (progn
+        (load file-path)
+        (format t "Successfully loaded user rule script: ~A~%" file-path)
+        t)
+    (error (e)
+      (format t "Failed to load rule script ~A: ~A~%" file-path e)
+      nil)))
+
