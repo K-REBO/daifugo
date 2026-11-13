@@ -1,6 +1,0 @@
-{
-  "name": "JDF-EXTENDED",
-  "version": "1.0.0",
-  "enabled_rules": ["REVOLUTION", "EIGHT-CUT", "SEQUENCE", "ELEVEN-BACK", "SUIT-BINDING", "SPADE3-RETURN"],
-  "metadata": {"AUTHOR": "日本大富豪連盟", "DESCRIPTION": "日本大富豪連盟拡張ルール", "VERSION": "2.0.0"}
-}

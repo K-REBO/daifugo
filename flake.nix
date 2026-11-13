@@ -22,16 +22,13 @@
           extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" ];
           targets = [ "wasm32-unknown-unknown" ];
         };
-
-        # 旧 Common Lisp 実装を参照・比較するための SBCL
-        sbcl = pkgs.sbcl.withPackages (p: [ p.fiveam p.cl-ppcre p.alexandria ]);
         rustPlatform = pkgs.makeRustPlatform { cargo = rust; rustc = rust; };
 
         src = pkgs.lib.cleanSourceWith {
           src = ./.;
           filter = path: type:
             let base = baseNameOf path; in
-            !(builtins.elem base [ "target" "LispDaifugoEngine" "result" ".direnv" ]);
+            !(builtins.elem base [ "target" "result" ".direnv" ]);
         };
 
         # スタンドアロン版（nix run で遊べる）
@@ -59,7 +56,6 @@
             pkgs.binaryen # wasm-opt
             pkgs.miniserve # Web 版のローカル配信
             pkgs.just
-            sbcl
           ];
 
           shellHook = ''

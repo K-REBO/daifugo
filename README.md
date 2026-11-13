@@ -19,13 +19,14 @@ crates/
   daifugo-cli/       スタンドアロン版 `daifugo`
   daifugo-wasm/      wasm-bindgen で JS に公開
 web/               ブラウザ UI（素の HTML/CSS/JS、エンジンは Web Worker で動く）
-LispDaifugoEngine/ 旧 Common Lisp 実装（参照用）
 ```
+
+旧 Common Lisp 実装（`LispDaifugoEngine/`）は Steel 版に置き換えて削除した。必要なら git の履歴（`8c83191` 以前）から取り出せる。
 
 ## 使い方
 
 ```sh
-nix develop            # Rust(+wasm32) / steel / wasm-bindgen / wasm-opt / miniserve / just / SBCL
+nix develop            # Rust(+wasm32) / steel / wasm-bindgen / wasm-opt / miniserve / just
 
 just test              # テスト（Scheme のテストも含む）
 just play              # 端末で遊ぶ
