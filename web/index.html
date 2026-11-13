@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>大富豪</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div id="loading" class="loading">
+    <div class="loading-card">♠</div>
+    <p>エンジンを読み込み中…</p>
+  </div>
+
+  <!-- 設定画面 -->
+  <section id="setup" class="setup" hidden>
+    <h1>大富豪</h1>
+    <p class="sub">Steel（Scheme）製エンジン on WebAssembly</p>
+
+    <form id="setup-form">
+      <div class="row">
+        <label>人数
+          <select name="players">
+            <option>2</option><option>3</option><option selected>4</option><option>5</option>
+            <option>6</option><option>7</option><option>8</option>
+          </select>
+        </label>
+        <label>CPU
+          <select name="ai">
+            <option value="smart" selected>つよい（smart）</option>
+            <option value="weak">ふつう（weak）</option>
+            <option value="strong">せっかち（strong）</option>
+            <option value="random">でたらめ（random）</option>
+          </select>
+        </label>
+        <label>速さ
+          <select name="speed">
+            <option value="900">ゆっくり</option>
+            <option value="550" selected>ふつう</option>
+            <option value="200">はやい</option>
+          </select>
+        </label>
+      </div>
+
+      <fieldset>
+        <legend>ローカルルール</legend>
+        <div class="presets" id="presets"></div>
+        <div id="rule-list" class="rule-list"></div>
+      </fieldset>
+
+      <details class="advanced">
+        <summary>詳細設定</summary>
+        <label>シード（空欄でランダム） <input name="seed" inputmode="numeric" placeholder="例: 12345"></label>
+        <label class="block">自作ルール（Steel / Scheme）
+          <textarea name="custom" rows="9" spellcheck="false"></textarea>
+        </label>
+        <p class="hint">ここに書いたルールは「開始」時に読み込まれ、上の一覧に追加されます。</p>
+      </details>
+
+      <p id="setup-error" class="error" role="alert"></p>
+      <button type="submit" class="primary big">ゲーム開始</button>
+    </form>
+  </section>
+
+  <!-- ゲーム画面 -->
+  <section id="game" class="game" hidden>
+    <header class="topbar">
+      <div class="title">第<span id="round">1</span>ゲーム</div>
+      <div id="badges" class="badges"></div>
+      <div class="top-actions">
+        <button id="btn-log" class="ghost" title="ログ">ログ</button>
+        <button id="btn-setup" class="ghost" title="設定に戻る">設定</button>
+      </div>
+    </header>
+
+    <div class="table">
+      <div id="opponents" class="opponents"></div>
+
+      <div class="field-wrap">
+        <div id="field" class="field"></div>
+        <div id="field-label" class="field-label"></div>
+        <div id="flash" class="flash" aria-live="polite"></div>
+      </div>
+
+      <div class="me">
+        <div id="me-info" class="me-info"></div>
+        <div id="prompt" class="prompt"></div>
+        <div id="hand" class="hand"></div>
+        <div class="actions">
+          <button id="btn-play" class="primary">出す</button>
+          <button id="btn-pass">パス</button>
+          <button id="btn-hint" class="ghost">ヒント</button>
+          <button id="btn-undo" class="ghost">戻す</button>
+        </div>
+      </div>
+    </div>
+
+    <aside id="log-panel" class="log-panel">
+      <div class="log-head">ログ <button id="btn-log-close" class="ghost">×</button></div>
+      <ol id="log" class="log"></ol>
+    </aside>
+  </section>
+
+  <!-- 結果 -->
+  <dialog id="result" class="result">
+    <h2>結果</h2>
+    <ol id="ranking" class="ranking"></ol>
+    <div class="actions">
+      <button id="btn-next" class="primary">次のゲーム</button>
+      <button id="btn-result-setup">設定に戻る</button>
+    </div>
+  </dialog>
+</body>
+</html>
